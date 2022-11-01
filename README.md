@@ -14,6 +14,15 @@
     <a href="https://sonarcloud.io/project/overview?id=livetheoogway_crud-store">
     	<img src="https://sonarcloud.io/api/project_badges/measure?project=livetheoogway_crud-store&metric=alert_status"/>
     </a>
+    <a href="https://sonarcloud.io/project/overview?id=livetheoogway_crud-store">
+    	<img src="https://sonarcloud.io/api/project_badges/measure?project=livetheoogway_crud-store&metric=coverage"/>
+    </a>
+    <a href="https://sonarcloud.io/project/overview?id=livetheoogway_crud-store">
+    	<img src="https://sonarcloud.io/api/project_badges/measure?project=livetheoogway_crud-store&metric=bugs"/>
+    </a>
+    <a href="https://sonarcloud.io/project/overview?id=livetheoogway_crud-store">
+    	<img src="https://sonarcloud.io/api/project_badges/measure?project=livetheoogway_crud-store&metric=vulnerabilities"/>
+    </a>
   </p>
 </p>
 
