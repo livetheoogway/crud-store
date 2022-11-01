@@ -75,7 +75,7 @@ class CachingStoreTest {
         assertEquals("3", testData.get().id());
         assertEquals("you", testData.get().name());
         store.update(new TestData("3", "you too", 7));
-        Thread.sleep(1200);
+        Thread.sleep(1500);
         testData = store.get("3");
         assertTrue(testData.isPresent());
         assertEquals("3", testData.get().id());
