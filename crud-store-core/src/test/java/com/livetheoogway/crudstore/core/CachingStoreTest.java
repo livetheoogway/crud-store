@@ -69,25 +69,36 @@ class CachingStoreTest {
         assertEquals(2, result2.size());
 
         /* after 1s, refresh after write should kick in */
+        store.create(new TestData("3", "you", 5));
+        testData = store.get("3");
+        assertTrue(testData.isPresent());
+        assertEquals("3", testData.get().id());
+        assertEquals("you", testData.get().name());
+        store.update(new TestData("3", "you too", 7));
         Thread.sleep(1200);
-        testData = store.get("1");
+        testData = store.get("3");
         assertTrue(testData.isPresent());
-        assertEquals("1", testData.get().id());
-        assertEquals("me", testData.get().name());
-        assertEquals(2, testData.get().age());
-        testData = store.get("1");
-        assertTrue(testData.isPresent());
-        assertEquals("1", testData.get().id());
-        assertEquals("me too", testData.get().name());
+        assertEquals("3", testData.get().id());
+        assertEquals("you", testData.get().name());
         assertEquals(5, testData.get().age());
+        testData = store.get("3");
+        assertTrue(testData.isPresent());
+        assertEquals("3", testData.get().id());
+        assertEquals("you too", testData.get().name());
+        assertEquals(7, testData.get().age());
 
         /* after 2s, refresh after write should kick in */
-        store.update(new TestData("1", "me three", 7));
-        Thread.sleep(2200);
-        testData = store.get("1");
+        store.create(new TestData("4", "four", 5));
+        testData = store.get("4");
         assertTrue(testData.isPresent());
-        assertEquals("1", testData.get().id());
-        assertEquals("me three", testData.get().name());
+        assertEquals("4", testData.get().id());
+        assertEquals("four", testData.get().name());
+        store.update(new TestData("4", "four too", 7));
+        Thread.sleep(2200);
+        testData = store.get("4");
+        assertTrue(testData.isPresent());
+        assertEquals("4", testData.get().id());
+        assertEquals("four too", testData.get().name());
         assertEquals(7, testData.get().age());
     }
 
