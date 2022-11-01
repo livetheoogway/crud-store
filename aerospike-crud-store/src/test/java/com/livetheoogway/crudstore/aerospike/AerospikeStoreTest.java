@@ -39,6 +39,7 @@ class AerospikeStoreTest {
     static void beforeAll() {
         AerospikeContainerConfiguration config = new AerospikeContainerConfiguration();
         config.setNamespace("test");
+        config.setDockerImage("aerospike/aerospike-server:6.1.0.3");
         config.setWaitTimeoutInSeconds(300);
         aerospikeContainer = new AerospikeContainer(config);
         aerospikeContainer.start();
