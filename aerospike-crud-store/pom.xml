@@ -17,6 +17,7 @@
         <jackson-core.version>2.13.4.2</jackson-core.version>
         <aerospike-client.version>6.1.2</aerospike-client.version>
         <validation-api.version>2.0.1.Final</validation-api.version>
+        <aerospike.testcontainer.version>1.0.8</aerospike.testcontainer.version>
     </properties>
 
     <dependencies>
@@ -42,6 +43,12 @@
             <artifactId>validation-api</artifactId>
             <version>${validation-api.version}</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.appform.testcontainer</groupId>
+            <artifactId>junit-testcontainer-aerospike</artifactId>
+            <version>${aerospike.testcontainer.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>

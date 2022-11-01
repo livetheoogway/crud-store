@@ -14,25 +14,11 @@
 
 package com.livetheoogway.crudstore.aerospike;
 
-import com.aerospike.client.AerospikeException;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.livetheoogway.crudstore.core.Id;
 
-import java.util.Optional;
-
-public interface ErrorHandler<T> {
-    void onDeleteUnsuccessful();
-
-    T onNoRecordFound(String id);
-
-    T onDeSerializationError(String id, final JsonProcessingException e);
-
-    T onAerospikeError(String id, AerospikeException e);
-
-    T onSerializationError(final String id, JsonProcessingException e);
-
-    Optional<T> onNoRecordFoundForBulkGet(String id);
-
-    Optional<T> onDeSerializationErrorDuringBulkGet(String id, JsonProcessingException e);
-
-    T onExecutionError(Exception e);
+public record TestData(String id, String name, int age) implements Id {
+    @Override
+    public String id() {
+        return id;
+    }
 }

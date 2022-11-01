@@ -14,6 +14,9 @@
 
 package com.livetheoogway.crudstore.core;
 
-public interface Id {
-    String id();
+public record TestData(String id, String name, int age) implements Id {
+    @Override
+    public String id() {
+        return id;
+    }
 }
