@@ -10,7 +10,8 @@
     </a>
     <a href="https://github.com/livetheoogway/crud-store/blob/master/LICENSE">
     	<img src="https://img.shields.io/github/license/livetheoogway/crud-store" alt="license" />
-    </a>
+    </a></p>
+  <p align="center">
     <a href="https://sonarcloud.io/project/overview?id=livetheoogway_crud-store">
     	<img src="https://sonarcloud.io/api/project_badges/measure?project=livetheoogway_crud-store&metric=alert_status"/>
     </a>
