@@ -27,7 +27,7 @@ public class DefaultErrorHandler<T> implements ErrorHandler<T> {
 
     @Override
     public T onNoRecordFound(final String id) {
-        throw null;
+        return null;
     }
 
     @Override
