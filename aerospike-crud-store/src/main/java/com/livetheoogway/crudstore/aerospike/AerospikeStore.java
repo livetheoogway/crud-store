@@ -118,7 +118,7 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
             return extractItem(id, asRecord);
         }, errorHandler);
         if (isValidDataItem(data)) {
-            return Optional.of(data);
+            return Optional.ofNullable(data);
         }
         return Optional.empty();
     }
