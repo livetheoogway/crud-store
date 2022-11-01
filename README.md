@@ -17,26 +17,33 @@
   </p>
 </p>
 
+## What is it?
+
+This is supposed to be a very simple codebase, with even simpler features.<br>
+I used to write these crud stores several times across use-cases, decided to create a simple interface, and some default
+abstractions of some popular databases that implements the interface.<br>
+I've been able to add the abstraction for aerospike. Impls for other databases are welcome.
 
 ## Features
 
 #### Cached Store
 
-Wraps your store with a Caffine cache
-
-- you may wrap the
-  Usage:
+Wraps your store with a Caffine in-memory cache. Use this to quickly have a cache on top of your store<br>
+Usage:
 
 ```java
-Store<MyData> store = new CachingStore(
+Store<MyData> store=new CachingStore(
         myAerospikeStore,
-        10, // expire after write in seconds
-        5, // refresh after write in seconds 
+        1000, // maxsize of cache
+        10,   // expire after write in seconds
+        5,    // refresh after write in seconds 
         );
 ```
 
 #### Aerospike Store
 
+This impl provides crud for your data by storing it in a default set (`data`), hides details of
+serialization/de-serserialization, provides hook for proper error handling
 Usage:
 
 ```java
@@ -55,4 +62,19 @@ public class MyAerospikeStore extends AerospikeStore<TestData> {
         return true; // you may do additional checks here
     }
 }
+```
+
+## How to use it
+
+### Maven Dependency
+
+The following can be added in your dependencies, for the aerospike crud-store.
+
+```xml
+
+<dependency>
+    <groupId>com.livetheoogway.crudstore</groupId>
+    <artifactId>aerospike-crud-store</artifactId>
+    <version>${crudstore.version}</version> <!--look for the latest version on top-->
+</dependency>
 ```
