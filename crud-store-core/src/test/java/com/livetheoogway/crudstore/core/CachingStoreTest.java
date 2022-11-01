@@ -15,11 +15,13 @@
 package com.livetheoogway.crudstore.core;
 
 import com.livetheoogway.crudstore.core.impl.InMemoryStore;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -75,17 +77,16 @@ class CachingStoreTest {
         assertEquals("3", testData.get().id());
         assertEquals("you", testData.get().name());
         store.update(new TestData("3", "you too", 7));
-        Thread.sleep(1500);
-        testData = store.get("3");
-        assertTrue(testData.isPresent());
-        assertEquals("3", testData.get().id());
-        assertEquals("you", testData.get().name());
-        assertEquals(5, testData.get().age());
-        testData = store.get("3");
-        assertTrue(testData.isPresent());
-        assertEquals("3", testData.get().id());
-        assertEquals("you too", testData.get().name());
-        assertEquals(7, testData.get().age());
+        Awaitility
+                .await()
+                .atMost(2, TimeUnit.SECONDS)
+                .pollDelay(100, TimeUnit.MILLISECONDS)
+                .until(() -> "you".equals(store.get("3").get().name()));
+        Awaitility
+                .await()
+                .atMost(5, TimeUnit.SECONDS)
+                .pollDelay(100, TimeUnit.MILLISECONDS)
+                .until(() -> "you too".equals(store.get("3").get().name()));
 
         /* after 2s, refresh after write should kick in */
         store.create(new TestData("4", "four", 5));
@@ -94,7 +95,12 @@ class CachingStoreTest {
         assertEquals("4", testData.get().id());
         assertEquals("four", testData.get().name());
         store.update(new TestData("4", "four too", 7));
-        Thread.sleep(2200);
+        Awaitility
+                .await()
+                .atMost(5, TimeUnit.SECONDS)
+                .pollDelay(2000, TimeUnit.MILLISECONDS)
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .until(() -> "four too".equals(store.get("4").get().name()));
         testData = store.get("4");
         assertTrue(testData.isPresent());
         assertEquals("4", testData.get().id());

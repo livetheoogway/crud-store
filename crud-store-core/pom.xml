@@ -14,7 +14,8 @@
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
-        <caffeine.version>3.0.6</caffeine.version>
+        <caffeine.version>3.1.1</caffeine.version>
+        <awaitility.version>3.1.6</awaitility.version>
     </properties>
 
     <dependencies>
@@ -22,6 +23,12 @@
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
             <version>${caffeine.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <version>${awaitility.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
