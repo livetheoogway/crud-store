@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class CachingStoreTest {
 
     @Test
-    void storeOperations() throws InterruptedException {
+    void storeOperations() {
         /* initialize */
         Store<TestData> store = new CachingStore<>(new InMemoryStore<>(), 5, 2, 1);
 
@@ -69,10 +69,16 @@ class CachingStoreTest {
         /* list */
         final List<TestData> result2 = store.list();
         assertEquals(2, result2.size());
+    }
+
+    @Test
+    void testExpireAndRefreshAfterWrite() {
+        /* initialize */
+        Store<TestData> store = new CachingStore<>(new InMemoryStore<>(), 5, 2, 1);
 
         /* after 1s, refresh after write should kick in */
         store.create(new TestData("3", "you", 5));
-        testData = store.get("3");
+        Optional<TestData> testData = store.get("3");
         assertTrue(testData.isPresent());
         assertEquals("3", testData.get().id());
         assertEquals("you", testData.get().name());
@@ -107,5 +113,4 @@ class CachingStoreTest {
         assertEquals("four too", testData.get().name());
         assertEquals(7, testData.get().age());
     }
-
 }

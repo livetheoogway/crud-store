@@ -19,6 +19,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 
 import java.util.Optional;
 
+@SuppressWarnings("java:S112")
 public interface ErrorHandler<T> {
     void onDeleteUnsuccessful();
 

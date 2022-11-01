@@ -78,3 +78,14 @@ The following can be added in your dependencies, for the aerospike crud-store.
     <version>${crudstore.version}</version> <!--look for the latest version on top-->
 </dependency>
 ```
+
+## Tech Dependencies
+
+- Java 17
+- Aerospike (any provided version should do)
+
+## Contributions
+
+Please raise Issues, Bugs or any feature requests at [Github Issues](https://github.com/livetheoogway/crud-store/issues)
+. <br>
+If you plan on contributing to the code, fork the repository and raise a Pull Request back here.
