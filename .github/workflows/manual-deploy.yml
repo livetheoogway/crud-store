@@ -58,9 +58,11 @@ jobs:
         run: |
           pom_version=`xmllint --xpath '/*[local-name()="project"]/*[local-name()="version"]/text()' pom.xml`
           echo "POM_VERSION=$pom_version" >> $GITHUB_ENV
-      - name: Extract release notes
-        id: extract-release-notes
-        uses: ffurrer2/extract-release-notes@v1
+      - name: "✏️ Generate release changelog"
+        id: extract-changelog
+        uses: heinrichreimer/github-changelog-generator-action@v2.3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Create release
         uses: actions/create-release@v1
         env:
@@ -70,4 +72,4 @@ jobs:
           release_name: v${{ env.POM_VERSION }}
           draft: false
           prerelease: false
-          body: ${{ steps.extract-release-notes.outputs.release_notes }}
+          body: ${{ steps.extract-changelog.outputs.changelog }}
