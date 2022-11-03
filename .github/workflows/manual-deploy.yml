@@ -45,7 +45,7 @@ jobs:
           MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
   tag_release:
-#    needs: publish
+    needs: publish
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -58,11 +58,26 @@ jobs:
         run: |
           pom_version=`xmllint --xpath '/*[local-name()="project"]/*[local-name()="version"]/text()' pom.xml`
           echo "POM_VERSION=$pom_version" >> $GITHUB_ENV
-      - name: "✏️ Generate release changelog"
+      - name: "Generate full changelog"
         id: extract-changelog
         uses: heinrichreimer/github-changelog-generator-action@v2.3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+      - name: "🖨️ Print changelog to console"
+        run: cat CHANGELOG.md
+      - name: "📤 Upload changelog"
+        uses: actions/upload-artifact@v1.0.0
+        with:
+          name: "Changelog"
+          path: CHANGELOG.md
+      - name: "Generate release changelog"
+        id: extract-changelog
+        uses: heinrichreimer/github-changelog-generator-action@v2.3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          onlyLastTag: "true"
+          stripHeaders: "true"
+          stripGeneratorNotice: "true"
       - name: Create release
         uses: actions/create-release@v1
         env:
