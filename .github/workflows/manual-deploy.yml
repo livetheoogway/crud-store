@@ -71,7 +71,7 @@ jobs:
           name: "Changelog"
           path: CHANGELOG.md
       - name: "Generate release changelog"
-        id: extract-changelog
+        id: extract-release-changelog
         uses: heinrichreimer/github-changelog-generator-action@v2.3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -87,4 +87,4 @@ jobs:
           release_name: v${{ env.POM_VERSION }}
           draft: false
           prerelease: false
-          body: ${{ steps.extract-changelog.outputs.changelog }}
+          body: ${{ steps.extract-release-changelog.outputs.changelog }}
