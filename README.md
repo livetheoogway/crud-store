@@ -5,8 +5,8 @@
     <a href="https://github.com/livetheoogway/crud-store/actions">
     	<img src="https://github.com/livetheoogway/crud-store/actions/workflows/actions.yml/badge.svg"/>
     </a>
-    <a href="https://s01.oss.sonatype.org/content/repositories/releases/com/livetheoogway/crud-store/">
-    	<img src="https://img.shields.io/maven-central/v/com.livetheoogway.crud-store/crud-store"/>
+    <a href="https://s01.oss.sonatype.org/content/repositories/releases/com/livetheoogway/crudstore/">
+    	<img src="https://img.shields.io/maven-central/v/com.livetheoogway.crudstore/crud-store"/>
     </a>
     <a href="https://github.com/livetheoogway/crud-store/blob/master/LICENSE">
     	<img src="https://img.shields.io/github/license/livetheoogway/crud-store" alt="license" />
