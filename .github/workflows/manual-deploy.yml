@@ -45,7 +45,7 @@ jobs:
           MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
   tag_release:
-    needs: publish
+#    needs: publish
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
