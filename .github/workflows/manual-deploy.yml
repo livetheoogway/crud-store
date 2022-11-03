@@ -56,9 +56,8 @@ jobs:
         run: sudo apt-get install -y libxml2-utils
       - name: Setup release information
         run: |
-          versionName=`xmllint --xpath '/*[local-name()="project"]/*[local-name()="version"]/text()' pom.xml`
-          export POM_VERSION=$versionName
-          echo "::set-env name=VERSION::$POM_VERSION"
+          $pom_version=`xmllint --xpath '/*[local-name()="project"]/*[local-name()="version"]/text()' pom.xml`
+          echo "POM_VERSION=$pom_version" >> $GITHUB_ENV
       - name: Extract release notes
         id: extract-release-notes
         uses: ffurrer2/extract-release-notes@v1
