@@ -53,7 +53,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install xmllint
-          run: sudo apt-get install -y libxml2-utils
+        run: sudo apt-get install -y libxml2-utils
       - name: Setup release information
         run: |
           versionName=`xmllint --xpath '/*[local-name()="project"]/*[local-name()="version"]/text()' pom.xml`
