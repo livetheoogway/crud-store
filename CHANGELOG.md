@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.8](https://github.com/livetheoogway/crud-store/tree/1.1.8) (2022-11-04)
+
+[Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.1.7...1.1.8)
+
+## [1.1.7](https://github.com/livetheoogway/crud-store/tree/1.1.7) (2022-11-04)
+
+[Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.1.6...1.1.7)
+
 ## [1.1.6](https://github.com/livetheoogway/crud-store/tree/1.1.6) (2022-11-03)
 
 [Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.1.5...1.1.6)
