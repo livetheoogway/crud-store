@@ -1,8 +1,20 @@
 # Changelog
 
-## [Unreleased](https://github.com/livetheoogway/crud-store/tree/HEAD)
+## [1.1.6](https://github.com/livetheoogway/crud-store/tree/1.1.6) (2022-11-03)
 
-[Full Changelog](https://github.com/livetheoogway/crud-store/compare/v1.0...HEAD)
+[Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.1.5...1.1.6)
+
+**Fixed bugs:**
+
+- Changelog is only getting pushed to tag, not on the file [\#3](https://github.com/livetheoogway/crud-store/issues/3)
+
+**Merged pull requests:**
+
+- Added ability to push change and tag separately [\#5](https://github.com/livetheoogway/crud-store/pull/5) ([Tushar-Naik](https://github.com/Tushar-Naik))
+
+## [1.1.5](https://github.com/livetheoogway/crud-store/tree/1.1.5) (2022-11-03)
+
+[Full Changelog](https://github.com/livetheoogway/crud-store/compare/v1.0...1.1.5)
 
 **Implemented enhancements:**
 
