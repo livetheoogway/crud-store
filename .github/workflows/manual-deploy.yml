@@ -66,7 +66,25 @@ jobs:
       - name: "📑 Setup release information"
         run: |
           pom_version=`xmllint --xpath '/*[local-name()="project"]/*[local-name()="version"]/text()' pom.xml`
-          echo "POM_VERSION=$pom_version" >> $GITHUB_ENV
+          echo "POM_VERSION=$pom_version" >> $GITHUB_ENV- name: "✏️ Generate release changelog"
+        id: extract-release-changelog
+        uses: heinrichreimer/github-changelog-generator-action@v2.3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          onlyLastTag: true
+          stripHeaders: true
+          stripGeneratorNotice: true
+
+      - name: "📍 Create release"
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.POM_VERSION }}
+          release_name: v${{ env.POM_VERSION }}
+          draft: false
+          prerelease: false
+          body: ${{ steps.extract-release-changelog.outputs.changelog }}
 
       - name: "✏️ Generate full changelog"
         id: extract-changelog
@@ -92,22 +110,4 @@ jobs:
         run: |
           git push "https://$CI_USER:$CI_TOKEN@github.com/$GITHUB_REPOSITORY.git" HEAD:master
 
-      - name: "✏️ Generate release changelog"
-        id: extract-release-changelog
-        uses: heinrichreimer/github-changelog-generator-action@v2.3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          onlyLastTag: "true"
-          stripHeaders: "true"
-          stripGeneratorNotice: "true"
 
-      - name: "📍 Create release"
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ env.POM_VERSION }}
-          release_name: v${{ env.POM_VERSION }}
-          draft: false
-          prerelease: false
-          body: ${{ steps.extract-release-changelog.outputs.changelog }}
