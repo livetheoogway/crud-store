@@ -56,7 +56,7 @@ public class DefaultErrorHandler<T> implements ErrorHandler<T> {
     }
 
     @Override
-    public T onExecutionError(final Exception e) {
+    public T onExecutionError(final String id, final Exception e) {
         throw new RuntimeException(e);
     }
 }

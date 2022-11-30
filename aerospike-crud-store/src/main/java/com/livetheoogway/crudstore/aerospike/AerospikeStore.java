@@ -217,7 +217,7 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
             return errorHandler.onSerializationError(id, e);
         } catch (Exception e) {
             log.error("Error while {} item for id:{}", operation, id, e);
-            return errorHandler.onExecutionError(e);
+            return errorHandler.onExecutionError(id, e);
         }
     }
 

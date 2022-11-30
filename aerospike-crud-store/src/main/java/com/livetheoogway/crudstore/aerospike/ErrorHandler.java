@@ -35,5 +35,5 @@ public interface ErrorHandler<T> {
 
     Optional<T> onDeSerializationErrorDuringBulkGet(String id, JsonProcessingException e);
 
-    T onExecutionError(Exception e);
+    T onExecutionError(final String id, Exception e);
 }
