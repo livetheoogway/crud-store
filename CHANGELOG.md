@@ -1,5 +1,21 @@
 # Changelog
 
+## [Unreleased](https://github.com/livetheoogway/crud-store/tree/HEAD)
+
+[Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.2.0...HEAD)
+
+**Fixed bugs:**
+
+- This is a test 3 [\#8](https://github.com/livetheoogway/crud-store/issues/8)
+
+**Closed issues:**
+
+- This is a test 2 [\#7](https://github.com/livetheoogway/crud-store/issues/7)
+
+## [1.2.0](https://github.com/livetheoogway/crud-store/tree/1.2.0) (2022-11-30)
+
+[Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.1.9...1.2.0)
+
 ## [1.1.9](https://github.com/livetheoogway/crud-store/tree/1.1.9) (2022-11-04)
 
 [Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.1.8...1.1.9)
