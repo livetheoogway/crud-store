@@ -1,8 +1,12 @@
 # Changelog
 
-## [Unreleased](https://github.com/livetheoogway/crud-store/tree/HEAD)
+## [1.2.2](https://github.com/livetheoogway/crud-store/tree/1.2.2) (2022-12-12)
 
-[Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.2.0...HEAD)
+[Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.2.0...1.2.2)
+
+**Implemented enhancements:**
+
+- ability to do createOrUpdate  [\#14](https://github.com/livetheoogway/crud-store/issues/14)
 
 **Fixed bugs:**
 
@@ -11,6 +15,10 @@
 **Closed issues:**
 
 - This is a test 2 [\#7](https://github.com/livetheoogway/crud-store/issues/7)
+
+**Merged pull requests:**
+
+- Addressing enhancements at \#12 \#13 and \#14 [\#15](https://github.com/livetheoogway/crud-store/pull/15) ([Tushar-Naik](https://github.com/Tushar-Naik))
 
 ## [1.2.0](https://github.com/livetheoogway/crud-store/tree/1.2.0) (2022-11-30)
 
