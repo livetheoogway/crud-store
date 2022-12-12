@@ -36,6 +36,17 @@ I've been able to add the abstraction for aerospike. Impls for other databases a
 
 ## Features
 
+#### The interface
+The following functions are supported in the interface
+```java
+    void create(final T item);
+    void update(final T item);
+    void delete(final String id);
+    Optional<T> get(final String id);
+    Map<String, T> get(final List<String> ids);
+    List<T> list();
+```
+
 #### Cached Store
 
 Wraps your store with a Caffine in-memory cache. Use this to quickly have a cache on top of your store<br>
