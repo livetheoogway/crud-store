@@ -17,18 +17,13 @@ package com.livetheoogway.crudstore.aerospike;
 import com.aerospike.client.IAerospikeClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-public class TestAerospikeStore extends AerospikeStore<TestData> {
+public class TestAerospikeStoreReplace extends AerospikeStore<TestData> {
 
-    protected TestAerospikeStore(final IAerospikeClient client,
-                                 final NamespaceSet namespaceSet,
-                                 final ObjectMapper mapper,
-                                 final Class<TestData> clazz,
-                                 final ErrorHandler<TestData> errorHandler) {
-        super(client, namespaceSet, mapper, clazz, errorHandler);
-    }
-
-    @Override
-    public boolean isValidDataItem(final TestData testData) {
-        return true;
+    protected TestAerospikeStoreReplace(final IAerospikeClient client,
+                                        final NamespaceSet namespaceSet,
+                                        final ObjectMapper mapper,
+                                        final Class<TestData> clazz,
+                                        final ErrorHandler<TestData> errorHandler) {
+        super(client, namespaceSet, mapper, clazz, errorHandler, false);
     }
 }
