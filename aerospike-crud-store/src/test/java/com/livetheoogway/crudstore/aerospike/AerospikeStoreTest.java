@@ -113,18 +113,18 @@ class AerospikeStoreTest {
         storeWithReplace.create(new TestData("1", "me", 2));
 
         /* get it back */
-        Optional<TestData> testData = store.get("1");
+        Optional<TestData> testData = storeWithReplace.get("1");
         assertTrue(testData.isPresent());
         assertEquals("1", testData.get().id());
         assertEquals("me", testData.get().name());
         assertEquals(2, testData.get().age());
 
         /* get on unknown id */
-        assertFalse(store.get("unknown").isPresent());
+        assertFalse(storeWithReplace.get("unknown").isPresent());
 
         /* update existing data */
-        store.create(new TestData("1", "me too", 5));
-        testData = store.get("1");
+        storeWithReplace.create(new TestData("1", "me too", 5));
+        testData = storeWithReplace.get("1");
         assertTrue(testData.isPresent());
         assertEquals("1", testData.get().id());
         assertEquals("me too", testData.get().name());
