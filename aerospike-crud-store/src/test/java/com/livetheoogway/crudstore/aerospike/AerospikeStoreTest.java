@@ -34,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AerospikeStoreTest {
     private static AerospikeContainer aerospikeContainer;
     private static AerospikeStore<TestData> store;
+    private static AerospikeClient aerospikeClient;
 
     @BeforeAll
     static void beforeAll() {
@@ -43,7 +44,7 @@ class AerospikeStoreTest {
         config.setWaitTimeoutInSeconds(300);
         aerospikeContainer = new AerospikeContainer(config);
         aerospikeContainer.start();
-        AerospikeClient aerospikeClient = ContainerHelper.provideAerospikeClient(aerospikeContainer, config);
+        aerospikeClient = ContainerHelper.provideAerospikeClient(aerospikeContainer, config);
         store = new TestAerospikeStore(aerospikeClient,
                                        new NamespaceSet("test", "test"),
                                        new ObjectMapper(),
@@ -97,5 +98,36 @@ class AerospikeStoreTest {
         final List<TestData> result2 = store.list();
         assertEquals(2, result2.size());
 
+    }
+
+    @Test
+    void testStoreOperationsOnReplace() {
+
+        final TestAerospikeStoreReplace storeWithReplace
+                = new TestAerospikeStoreReplace(aerospikeClient,
+                                                new NamespaceSet("test", "test"),
+                                                new ObjectMapper(),
+                                                TestData.class,
+                                                new DefaultErrorHandler<>());
+        /* put some data */
+        storeWithReplace.create(new TestData("1", "me", 2));
+
+        /* get it back */
+        Optional<TestData> testData = storeWithReplace.get("1");
+        assertTrue(testData.isPresent());
+        assertEquals("1", testData.get().id());
+        assertEquals("me", testData.get().name());
+        assertEquals(2, testData.get().age());
+
+        /* get on unknown id */
+        assertFalse(storeWithReplace.get("unknown").isPresent());
+
+        /* update existing data */
+        storeWithReplace.create(new TestData("1", "me too", 5));
+        testData = storeWithReplace.get("1");
+        assertTrue(testData.isPresent());
+        assertEquals("1", testData.get().id());
+        assertEquals("me too", testData.get().name());
+        assertEquals(5, testData.get().age());
     }
 }

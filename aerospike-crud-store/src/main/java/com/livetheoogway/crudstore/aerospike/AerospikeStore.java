@@ -44,23 +44,33 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
     protected final ObjectMapper mapper;
     protected final IAerospikeClient client;
     protected final NamespaceSet namespaceSet;
-    protected final WritePolicy createOnly;
+    protected final WritePolicy createPolicy;
     protected final WritePolicy updateOnly;
+    protected final ErrorHandler<T> errorHandler;
     private final Class<T> clazz;
-    private final ErrorHandler<T> errorHandler;
 
     protected AerospikeStore(final IAerospikeClient client,
                              final NamespaceSet namespaceSet,
                              final ObjectMapper mapper,
                              final Class<T> clazz,
                              final ErrorHandler<T> errorHandler) {
+        this(client, namespaceSet, mapper, clazz, errorHandler, true);
+    }
+
+    protected AerospikeStore(final IAerospikeClient client,
+                             final NamespaceSet namespaceSet,
+                             final ObjectMapper mapper,
+                             final Class<T> clazz,
+                             final ErrorHandler<T> errorHandler,
+                             final boolean failOnCreateIfRecordExists) {
         this.client = client;
         this.namespaceSet = namespaceSet;
         this.mapper = mapper;
         this.errorHandler = errorHandler;
         this.clazz = clazz;
-        this.createOnly = new WritePolicy(client.getWritePolicyDefault());
-        createOnly.recordExistsAction = RecordExistsAction.CREATE_ONLY;
+        this.createPolicy = new WritePolicy(client.getWritePolicyDefault());
+        createPolicy.recordExistsAction = failOnCreateIfRecordExists ? RecordExistsAction.CREATE_ONLY
+                                                                     : RecordExistsAction.REPLACE;
         this.updateOnly = new WritePolicy(client.getWritePolicyDefault());
         updateOnly.recordExistsAction = RecordExistsAction.UPDATE_ONLY;
     }
@@ -70,7 +80,20 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
      * @return true if the item t is valid you should not throw error here, just return false to filter.
      * Let the layer above this handle how to treat an invalid item. They can throw the error there
      */
-    protected abstract boolean isValidDataItem(T t);
+    protected boolean isValidDataItem(T t) {
+        return true;
+    }
+
+    /**
+     * override this method to change the expiration time.
+     * By default, the expiry is infinite
+     *
+     * @param item item being saved
+     * @return expiry (-1 if you want no expiry on the items being saved into aerospike)
+     */
+    protected int expiration(T item) {
+        return -1;
+    }
 
     /**
      * this will throw an error if the item's ID  is already present in aerospike
@@ -79,7 +102,7 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
      */
     @Override
     public void create(final T item) {
-        write(item, createOnly);
+        write(item, createPolicy);
     }
 
     /**
@@ -193,7 +216,7 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
 
     protected RecordDetails recordDetails(T item) throws JsonProcessingException {
         final Bin dataBin = new Bin(DATA, mapper.writeValueAsString(item));
-        return new RecordDetails(-1, dataBin);
+        return new RecordDetails(expiration(item), dataBin);
     }
 
     /**
