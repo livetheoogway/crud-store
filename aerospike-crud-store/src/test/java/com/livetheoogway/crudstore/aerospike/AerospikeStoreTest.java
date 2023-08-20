@@ -48,7 +48,6 @@ class AerospikeStoreTest {
         store = new TestAerospikeStore(aerospikeClient,
                                        new NamespaceSet("test", "test"),
                                        new ObjectMapper(),
-                                       TestData.class,
                                        new DefaultErrorHandler<>());
     }
 

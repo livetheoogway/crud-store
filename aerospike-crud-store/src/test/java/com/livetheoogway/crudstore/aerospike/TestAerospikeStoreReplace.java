@@ -24,6 +24,6 @@ public class TestAerospikeStoreReplace extends AerospikeStore<TestData> {
                                         final NamespaceSet namespaceSet,
                                         final ObjectMapper mapper,
                                         final ErrorHandler<TestData> errorHandler) {
-        super(client, namespaceSet, mapper, new TypeReference<>() {}, errorHandler, false);
+        super(client, namespaceSet, mapper, errorHandler, false);
     }
 }

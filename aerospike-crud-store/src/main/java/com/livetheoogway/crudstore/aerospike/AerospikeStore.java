@@ -54,35 +54,20 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
     protected AerospikeStore(final IAerospikeClient client,
                              final NamespaceSet namespaceSet,
                              final ObjectMapper mapper,
-                             final Class<T> clazz,
                              final ErrorHandler<T> errorHandler) {
-        this(client, namespaceSet, mapper, new TypeReference<>() {
-            @Override
-            public Type getType() {
-                return clazz;
-            }
-        }, errorHandler, true);
+        this(client, namespaceSet, mapper, errorHandler, true);
     }
 
     protected AerospikeStore(final IAerospikeClient client,
                              final NamespaceSet namespaceSet,
                              final ObjectMapper mapper,
-                             final TypeReference<T> typeReference,
-                             final ErrorHandler<T> errorHandler) {
-        this(client, namespaceSet, mapper, typeReference, errorHandler, true);
-    }
-
-    protected AerospikeStore(final IAerospikeClient client,
-                             final NamespaceSet namespaceSet,
-                             final ObjectMapper mapper,
-                             final TypeReference<T> typeReference,
                              final ErrorHandler<T> errorHandler,
                              final boolean failOnCreateIfRecordExists) {
         this.client = client;
         this.namespaceSet = namespaceSet;
         this.mapper = mapper;
         this.errorHandler = errorHandler;
-        this.typeReference = typeReference;
+        this.typeReference = new TypeReference<>() {};
         this.createPolicy = new WritePolicy(client.getWritePolicyDefault());
         createPolicy.recordExistsAction = failOnCreateIfRecordExists ? RecordExistsAction.CREATE_ONLY
                                                                      : RecordExistsAction.REPLACE;
