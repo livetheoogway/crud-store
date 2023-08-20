@@ -107,7 +107,6 @@ class AerospikeStoreTest {
                 = new TestAerospikeStoreReplace(aerospikeClient,
                                                 new NamespaceSet("test", "test"),
                                                 new ObjectMapper(),
-                                                TestData.class,
                                                 new DefaultErrorHandler<>());
         /* put some data */
         storeWithReplace.create(new TestData("1", "me", 2));
