@@ -218,11 +218,12 @@ class AerospikeStoreTest {
 
     @Test
     void testHandlerForAerospikeExceptionDuringGet() {
-        final AerospikeClient aerospikeClient = mock(AerospikeClient.class);
-        when(aerospikeClient.get(any(Policy.class), any(Key.class))).thenThrow(AerospikeException.class);
+        final AerospikeClient newASClient = mock(AerospikeClient.class);
+        when(newASClient.get(any(Policy.class), any(Key.class))).thenThrow(AerospikeException.class);
+        when(newASClient.getWritePolicyDefault()).thenReturn(aerospikeClient.getWritePolicyDefault());
         final ErrorHandler<TestData> errorHandler = mock(ErrorHandler.class);
         final TestAerospikeStore newStore
-                = new TestAerospikeStore(aerospikeClient,
+                = new TestAerospikeStore(newASClient,
                                          new NamespaceSet("test", "no-record-error-2"),
                                          new ObjectMapper(), errorHandler);
 
