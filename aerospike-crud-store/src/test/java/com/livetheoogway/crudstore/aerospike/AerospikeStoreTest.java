@@ -15,6 +15,9 @@
 package com.livetheoogway.crudstore.aerospike;
 
 import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Key;
+import com.aerospike.client.policy.Policy;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -181,13 +184,13 @@ class AerospikeStoreTest {
                 = new TestAerospikeStore(aerospikeClient,
                                          new NamespaceSet("test", "json-error-2"),
                                          mapper, errorHandler);
-        final var testData = DataUtils.generateTestData();
+        final var testData = DataUtils.generateTestData("31");
         newStore.create(testData);
         final Optional<TestData> result = newStore.get(testData.id());
         assertFalse(result.isPresent());
         Mockito.verify(errorHandler, Mockito.times(1)).onDeSerializationError(any(), any());
 
-        final var anotherTestData = DataUtils.generateTestData("2");
+        final var anotherTestData = DataUtils.generateTestData("32");
         newStore.create(anotherTestData);
         final Map<String, TestData> result2 = newStore.get(List.of(testData.id(), anotherTestData.id()));
         assertTrue(result2.isEmpty());
@@ -211,5 +214,22 @@ class AerospikeStoreTest {
         final Map<String, TestData> result2 = newStore.get(List.of(testData.id(), anotherTestData.id()));
         assertTrue(result2.isEmpty());
         Mockito.verify(errorHandler, Mockito.times(3)).onNoRecordFound(any());
+    }
+
+    @Test
+    void testHandlerForAerospikeExceptionDuringGet() {
+        final AerospikeClient aerospikeClient = mock(AerospikeClient.class);
+        when(aerospikeClient.get(any(Policy.class), any(Key.class))).thenThrow(AerospikeException.class);
+        final ErrorHandler<TestData> errorHandler = mock(ErrorHandler.class);
+        final TestAerospikeStore newStore
+                = new TestAerospikeStore(aerospikeClient,
+                                         new NamespaceSet("test", "no-record-error-2"),
+                                         new ObjectMapper(), errorHandler);
+
+        final var testData = DataUtils.generateTestData();
+        newStore.create(testData);
+        final Optional<TestData> result = newStore.get(testData.id());
+        assertFalse(result.isPresent());
+        Mockito.verify(errorHandler, Mockito.times(1)).onAerospikeError(any(), any());
     }
 }
