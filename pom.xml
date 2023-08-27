@@ -7,7 +7,7 @@
     <groupId>com.livetheoogway.crudstore</groupId>
     <artifactId>crud-store</artifactId>
     <packaging>pom</packaging>
-    <version>1.2.3-SNAPSHOT</version>
+    <version>1.2.3</version>
 
     <name>crud-store</name>
     <description>
