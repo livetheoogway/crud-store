@@ -138,13 +138,13 @@ class AerospikeStoreTest {
         store.create(me);
 
         /* get it back */
-        Optional<TestData> testData = store.get("1");
+        Optional<TestData> testData = store.get(me.id());
         validateTestData(testData, me);
 
         /* delete it */
-        store.delete("1");
+        store.delete(me.id());
 
         /* get it back */
-        assertFalse(store.get("1").isPresent());
+        assertFalse(store.get(me.id()).isPresent());
     }
 }
