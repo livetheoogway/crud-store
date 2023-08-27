@@ -70,6 +70,5 @@ class StoreTest {
         /* list */
         final List<TestData> result2 = store.list();
         assertEquals(2, result2.size());
-
     }
 }

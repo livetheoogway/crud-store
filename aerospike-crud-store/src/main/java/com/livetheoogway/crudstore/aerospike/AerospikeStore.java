@@ -22,12 +22,14 @@ import com.aerospike.client.Record;
 import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.policy.WritePolicy;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.livetheoogway.crudstore.core.Id;
 import com.livetheoogway.crudstore.core.Store;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -47,7 +49,7 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
     protected final WritePolicy createPolicy;
     protected final WritePolicy updateOnly;
     protected final ErrorHandler<T> errorHandler;
-    private final Class<T> clazz;
+    protected final TypeReference<T> typeReference;
 
     protected AerospikeStore(final IAerospikeClient client,
                              final NamespaceSet namespaceSet,
@@ -63,11 +65,33 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
                              final Class<T> clazz,
                              final ErrorHandler<T> errorHandler,
                              final boolean failOnCreateIfRecordExists) {
+        this(client, namespaceSet, mapper, new TypeReference<>() {
+            @Override
+            public Type getType() {
+                return clazz;
+            }
+        }, errorHandler, failOnCreateIfRecordExists);
+    }
+
+    protected AerospikeStore(final IAerospikeClient client,
+                             final NamespaceSet namespaceSet,
+                             final ObjectMapper mapper,
+                             final TypeReference<T> typeReference,
+                             final ErrorHandler<T> errorHandler) {
+        this(client, namespaceSet, mapper, typeReference, errorHandler, true);
+    }
+
+    protected AerospikeStore(final IAerospikeClient client,
+                             final NamespaceSet namespaceSet,
+                             final ObjectMapper mapper,
+                             final TypeReference<T> typeReference,
+                             final ErrorHandler<T> errorHandler,
+                             final boolean failOnCreateIfRecordExists) {
         this.client = client;
         this.namespaceSet = namespaceSet;
         this.mapper = mapper;
         this.errorHandler = errorHandler;
-        this.clazz = clazz;
+        this.typeReference = typeReference;
         this.createPolicy = new WritePolicy(client.getWritePolicyDefault());
         createPolicy.recordExistsAction = failOnCreateIfRecordExists ? RecordExistsAction.CREATE_ONLY
                                                                      : RecordExistsAction.REPLACE;
@@ -194,23 +218,23 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
         }
         val data = asRecord.getString(DATA);
         try {
-            return mapper.readValue(data, clazz);
+            return mapper.readValue(data, typeReference);
         } catch (JsonProcessingException e) {
-            log.error("[{}] Deserialization error id:{} record:{}", clazz.getSimpleName(), id, asRecord, e);
+            log.error("[{}] Deserialization error id:{} record:{}", typeReference.getType().getTypeName(), id, asRecord, e);
             return errorHandler.onDeSerializationError(id, e);
         }
     }
 
     public Optional<T> extractItemForBulkOperations(String id, Record asRecord) {
         if (asRecord == null) {
-            return errorHandler.onNoRecordFoundForBulkGet(id);
+            return Optional.ofNullable(errorHandler.onNoRecordFound(id));
         }
         val data = asRecord.getString(DATA);
         try {
-            return Optional.of(mapper.readValue(data, clazz));
+            return Optional.of(mapper.readValue(data, typeReference));
         } catch (JsonProcessingException e) {
-            log.error("[{}] Deserialization error id:{} record:{}", clazz.getSimpleName(), id, asRecord, e);
-            return errorHandler.onDeSerializationErrorDuringBulkGet(id, e);
+            log.error("[{}] Deserialization error id:{} record:{}", typeReference.getType().getTypeName(), id, asRecord, e);
+            return Optional.ofNullable(errorHandler.onDeSerializationError(id, e));
         }
     }
 
@@ -230,10 +254,10 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
      */
     protected <R> R exec(final String operation, final String id, ESupplier<R> response, ErrorHandler<R> errorHandler) {
         try {
-            log.info("[{}] {} item for id:{}", clazz.getSimpleName(), operation, id);
+            log.info("[{}] {} item for id:{}", typeReference.getType().getTypeName(), operation, id);
             return response.get();
         } catch (AerospikeException e) {
-            log.error("[{}] Aerospike Error {} item for id:{}", clazz.getSimpleName(), operation, id, e);
+            log.error("[{}] Aerospike Error {} item for id:{}", typeReference.getType().getTypeName(), operation, id, e);
             return errorHandler.onAerospikeError(id, e);
         } catch (JsonProcessingException e) {
             log.error("Error while converting to string for id:{}", id, e);
@@ -257,9 +281,5 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
             client.put(writePolicy, requestIdKey, recordDetails.bins());
             return null;
         }, errorHandler);
-    }
-
-    private interface ESupplier<T> {
-        T get() throws Exception;
     }
 }

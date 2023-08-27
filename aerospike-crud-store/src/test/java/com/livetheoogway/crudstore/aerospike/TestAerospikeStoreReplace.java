@@ -22,8 +22,7 @@ public class TestAerospikeStoreReplace extends AerospikeStore<TestData> {
     protected TestAerospikeStoreReplace(final IAerospikeClient client,
                                         final NamespaceSet namespaceSet,
                                         final ObjectMapper mapper,
-                                        final Class<TestData> clazz,
                                         final ErrorHandler<TestData> errorHandler) {
-        super(client, namespaceSet, mapper, clazz, errorHandler, false);
+        super(client, namespaceSet, mapper, TestData.class, errorHandler, false);
     }
 }
