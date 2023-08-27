@@ -128,4 +128,24 @@ class AerospikeStoreTest {
         assertEquals("me too", testData.get().name());
         assertEquals(5, testData.get().age());
     }
+
+    @Test
+    void testStoreDeleteOperation() {
+
+        /* put some data */
+        store.create(new TestData("1", "me", 2));
+
+        /* get it back */
+        Optional<TestData> testData = store.get("1");
+        assertTrue(testData.isPresent());
+        assertEquals("1", testData.get().id());
+        assertEquals("me", testData.get().name());
+        assertEquals(2, testData.get().age());
+
+        /* delete it */
+        store.delete("1");
+
+        /* get it back */
+        assertFalse(store.get("1").isPresent());
+    }
 }
