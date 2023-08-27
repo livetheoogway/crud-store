@@ -116,7 +116,7 @@ class AerospikeStoreTest {
 
         final TestAerospikeStoreReplace storeWithReplace
                 = new TestAerospikeStoreReplace(aerospikeClient,
-                                                new NamespaceSet("test", "test"),
+                                                new NamespaceSet("test", "test-2"),
                                                 new ObjectMapper(),
                                                 new DefaultErrorHandler<>());
         /* put some data */
@@ -165,7 +165,7 @@ class AerospikeStoreTest {
         when(mapper.writeValueAsString(any())).thenThrow(JsonProcessingException.class);
         final TestAerospikeStore newStore
                 = new TestAerospikeStore(aerospikeClient,
-                                         new NamespaceSet("test", "json-error"),
+                                         new NamespaceSet("test", "json-error-1"),
                                          mapper, errorHandler);
         newStore.create(DataUtils.generateTestData());
         Mockito.verify(errorHandler, Mockito.times(1)).onSerializationError(any(), any());
@@ -178,12 +178,18 @@ class AerospikeStoreTest {
         when(mapper.readValue(anyString(), any(TypeReference.class))).thenThrow(JsonProcessingException.class);
         final TestAerospikeStore newStore
                 = new TestAerospikeStore(aerospikeClient,
-                                         new NamespaceSet("test", "json-error"),
+                                         new NamespaceSet("test", "json-error-2"),
                                          mapper, errorHandler);
         final var testData = DataUtils.generateTestData();
         newStore.create(testData);
         final Optional<TestData> result = newStore.get(testData.id());
         assertFalse(result.isPresent());
         Mockito.verify(errorHandler, Mockito.times(1)).onSerializationError(any(), any());
+
+        final var anotherTestData = DataUtils.generateTestData("2");
+        newStore.create(anotherTestData);
+        final Map<String, TestData> result2 = newStore.get(List.of(testData.id(), anotherTestData.id()));
+        assertTrue(result2.isEmpty());
+        Mockito.verify(errorHandler, Mockito.times(2)).onSerializationError(any(), any());
     }
 }
