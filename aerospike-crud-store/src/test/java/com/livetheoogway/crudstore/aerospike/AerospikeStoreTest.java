@@ -225,7 +225,7 @@ class AerospikeStoreTest {
     void testHandlerForAerospikeExceptionDuringGet() {
         final IAerospikeClient newASClient = mock(AerospikeClient.class);
         when(newASClient.getWritePolicyDefault()).thenReturn(aerospikeClient.getWritePolicyDefault());
-        when(newASClient.get(any(Policy.class), any(Key.class))).thenThrow(AerospikeException.class);
+        when(newASClient.get(any(Policy.class), any(Key.class))).thenThrow(new AerospikeException(22, "test-error-on-get"));
         doNothing().when(newASClient).put(any(WritePolicy.class), any(Key.class), any());
         final ErrorHandler<TestData> errorHandler = mock(ErrorHandler.class);
         final TestAerospikeStore newStore
