@@ -18,6 +18,7 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.WritePolicy;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,6 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -177,14 +179,16 @@ class AerospikeStoreTest {
 
     @Test
     void testHandlerForJsonSerializationExceptionDuringGet() throws JsonProcessingException {
+        final ObjectMapper validObjectMapper = new ObjectMapper();
         final ObjectMapper mapper = mock(ObjectMapper.class);
         final ErrorHandler<TestData> errorHandler = mock(ErrorHandler.class);
         when(mapper.readValue(anyString(), any(TypeReference.class))).thenThrow(JsonProcessingException.class);
+        final var testData = DataUtils.generateTestData("31");
+        when(mapper.writeValueAsString(any())).thenReturn(validObjectMapper.writeValueAsString(testData));
         final TestAerospikeStore newStore
                 = new TestAerospikeStore(aerospikeClient,
                                          new NamespaceSet("test", "json-error-2"),
                                          mapper, errorHandler);
-        final var testData = DataUtils.generateTestData("31");
         newStore.create(testData);
         final Optional<TestData> result = newStore.get(testData.id());
         assertFalse(result.isPresent());
@@ -221,6 +225,7 @@ class AerospikeStoreTest {
         final AerospikeClient newASClient = mock(AerospikeClient.class);
         when(newASClient.get(any(Policy.class), any(Key.class))).thenThrow(AerospikeException.class);
         when(newASClient.getWritePolicyDefault()).thenReturn(aerospikeClient.getWritePolicyDefault());
+        doNothing().when(newASClient).put(any(WritePolicy.class), any(Key.class), any());
         final ErrorHandler<TestData> errorHandler = mock(ErrorHandler.class);
         final TestAerospikeStore newStore
                 = new TestAerospikeStore(newASClient,
