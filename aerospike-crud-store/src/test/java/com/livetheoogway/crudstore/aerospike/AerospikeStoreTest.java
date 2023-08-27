@@ -41,6 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -220,23 +221,22 @@ class AerospikeStoreTest {
         assertTrue(result2.isEmpty());
         Mockito.verify(errorHandler, Mockito.times(3)).onNoRecordFound(any());
     }
-
+    
     @Test
-    void testHandlerForAerospikeExceptionDuringGet() {
+    void testHandlerForAerospikeExceptionDuringPut() {
         final IAerospikeClient newASClient = mock(AerospikeClient.class);
-        when(newASClient.getWritePolicyDefault()).thenReturn(aerospikeClient.getWritePolicyDefault());
-        when(newASClient.get(any(Policy.class), any(Key.class))).thenThrow(new AerospikeException(22, "test-error-on-get"));
+        when(newASClient.getWritePolicyDefault()).thenReturn(new WritePolicy());
         doNothing().when(newASClient).put(any(WritePolicy.class), any(Key.class), any());
+        doThrow(new AerospikeException(22, "test-error-on-put")).when(newASClient).put(any(WritePolicy.class),
+                                                                                       any(Key.class), any());
         final ErrorHandler<TestData> errorHandler = mock(ErrorHandler.class);
         final TestAerospikeStore newStore
                 = new TestAerospikeStore(newASClient,
                                          new NamespaceSet("test", "no-record-error-2"),
                                          new ObjectMapper(), errorHandler);
 
-        final var testData = DataUtils.generateTestData();
+        final var testData = DataUtils.generateTestData("77");
         newStore.create(testData);
-        final Optional<TestData> result = newStore.get(testData.id());
-        assertFalse(result.isPresent());
         Mockito.verify(errorHandler, Mockito.times(1)).onAerospikeError(any(), any());
     }
 }
