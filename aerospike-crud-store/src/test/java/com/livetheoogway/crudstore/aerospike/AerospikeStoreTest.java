@@ -40,7 +40,8 @@ class AerospikeStoreTest {
     static void beforeAll() {
         AerospikeContainerConfiguration config = new AerospikeContainerConfiguration();
         config.setNamespace("test");
-        config.setDockerImage("aerospike/aerospike-server:6.1.0.3");
+        config.setPort(4000);
+        config.setDockerImage("aerospike/aerospike-server-enterprise:latest");
         config.setWaitTimeoutInSeconds(300);
         aerospikeContainer = new AerospikeContainer(config);
         aerospikeContainer.start();
@@ -108,7 +109,7 @@ class AerospikeStoreTest {
                                                 new ObjectMapper(),
                                                 new DefaultErrorHandler<>());
         /* put some data */
-        storeWithReplace.create(new TestData("1", "me", 2));
+        storeWithReplace.create(new TestData("11", "me", 2));
 
         /* get it back */
         Optional<TestData> testData = storeWithReplace.get("1");

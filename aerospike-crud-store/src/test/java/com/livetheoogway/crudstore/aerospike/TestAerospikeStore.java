@@ -23,7 +23,7 @@ public class TestAerospikeStore extends AerospikeStore<TestData> {
                                  final NamespaceSet namespaceSet,
                                  final ObjectMapper mapper,
                                  final ErrorHandler<TestData> errorHandler) {
-        super(client, namespaceSet, mapper, errorHandler);
+        super(client, namespaceSet, mapper, TestData.class, errorHandler);
     }
 
     @Override

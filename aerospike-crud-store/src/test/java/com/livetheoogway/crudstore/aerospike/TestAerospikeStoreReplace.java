@@ -15,7 +15,6 @@
 package com.livetheoogway.crudstore.aerospike;
 
 import com.aerospike.client.IAerospikeClient;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class TestAerospikeStoreReplace extends AerospikeStore<TestData> {
@@ -24,6 +23,6 @@ public class TestAerospikeStoreReplace extends AerospikeStore<TestData> {
                                         final NamespaceSet namespaceSet,
                                         final ObjectMapper mapper,
                                         final ErrorHandler<TestData> errorHandler) {
-        super(client, namespaceSet, mapper, errorHandler, false);
+        super(client, namespaceSet, mapper, TestData.class, errorHandler, false);
     }
 }

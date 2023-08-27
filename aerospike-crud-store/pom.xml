@@ -15,7 +15,7 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <jackson-core.version>2.13.4.2</jackson-core.version>
-        <aerospike-client.version>6.1.2</aerospike-client.version>
+        <aerospike-client.version>6.1.10</aerospike-client.version>
         <validation-api.version>2.0.1.Final</validation-api.version>
         <aerospike.testcontainer.version>1.0.8</aerospike.testcontainer.version>
     </properties>
