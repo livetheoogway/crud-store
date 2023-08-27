@@ -227,7 +227,7 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
 
     public Optional<T> extractItemForBulkOperations(String id, Record asRecord) {
         if (asRecord == null) {
-            return errorHandler.onNoRecordFoundForBulkGet(id);
+            return Optional.ofNullable(errorHandler.onNoRecordFound(id));
         }
         val data = asRecord.getString(DATA);
         try {

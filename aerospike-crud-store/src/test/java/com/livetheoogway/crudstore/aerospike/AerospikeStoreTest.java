@@ -159,7 +159,7 @@ class AerospikeStoreTest {
     }
 
     @Test
-    void testJsonSerializationExceptionDuringCreate() throws JsonProcessingException {
+    void testHandlerForJsonSerializationExceptionDuringCreate() throws JsonProcessingException {
         final ObjectMapper mapper = mock(ObjectMapper.class);
         final ErrorHandler<TestData> errorHandler = mock(ErrorHandler.class);
         when(mapper.writeValueAsString(any())).thenThrow(JsonProcessingException.class);
@@ -171,8 +171,9 @@ class AerospikeStoreTest {
         Mockito.verify(errorHandler, Mockito.times(1)).onSerializationError(any(), any());
 
     }
+
     @Test
-    void testJsonSerializationExceptionDuringGet() throws JsonProcessingException {
+    void testHandlerForJsonSerializationExceptionDuringGet() throws JsonProcessingException {
         final ObjectMapper mapper = mock(ObjectMapper.class);
         final ErrorHandler<TestData> errorHandler = mock(ErrorHandler.class);
         when(mapper.readValue(anyString(), any(TypeReference.class))).thenThrow(JsonProcessingException.class);
@@ -191,5 +192,24 @@ class AerospikeStoreTest {
         final Map<String, TestData> result2 = newStore.get(List.of(testData.id(), anotherTestData.id()));
         assertTrue(result2.isEmpty());
         Mockito.verify(errorHandler, Mockito.times(3)).onDeSerializationError(any(), any());
+    }
+
+    @Test
+    void testHandlerForNoRecordFoundExceptionDuringGet() {
+        final ErrorHandler<TestData> errorHandler = mock(ErrorHandler.class);
+        final TestAerospikeStore newStore
+                = new TestAerospikeStore(aerospikeClient,
+                                         new NamespaceSet("test", "no-record-error-2"),
+                                         new ObjectMapper(), errorHandler);
+
+        final var testData = DataUtils.generateTestData();
+        final Optional<TestData> result = newStore.get(testData.id());
+        assertFalse(result.isPresent());
+        Mockito.verify(errorHandler, Mockito.times(1)).onNoRecordFound(any());
+
+        final var anotherTestData = DataUtils.generateTestData("2");
+        final Map<String, TestData> result2 = newStore.get(List.of(testData.id(), anotherTestData.id()));
+        assertTrue(result2.isEmpty());
+        Mockito.verify(errorHandler, Mockito.times(3)).onNoRecordFound(any());
     }
 }

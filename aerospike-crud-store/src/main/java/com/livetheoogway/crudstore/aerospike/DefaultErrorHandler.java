@@ -46,16 +46,6 @@ public class DefaultErrorHandler<T> implements ErrorHandler<T> {
     }
 
     @Override
-    public Optional<T> onNoRecordFoundForBulkGet(final String id) {
-        return Optional.empty();
-    }
-
-    @Override
-    public Optional<T> onDeSerializationErrorDuringBulkGet(final String id, final JsonProcessingException e) {
-        return Optional.empty();
-    }
-
-    @Override
     public T onExecutionError(final String id, final Exception e) {
         throw new RuntimeException(e);
     }

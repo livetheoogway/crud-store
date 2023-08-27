@@ -17,8 +17,6 @@ package com.livetheoogway.crudstore.aerospike;
 import com.aerospike.client.AerospikeException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 
-import java.util.Optional;
-
 @SuppressWarnings("java:S112")
 public interface ErrorHandler<T> {
     void onDeleteUnsuccessful();
@@ -30,8 +28,6 @@ public interface ErrorHandler<T> {
     T onAerospikeError(String id, AerospikeException e);
 
     T onSerializationError(final String id, JsonProcessingException e);
-
-    Optional<T> onNoRecordFoundForBulkGet(String id);
 
     T onExecutionError(final String id, Exception e);
 }
