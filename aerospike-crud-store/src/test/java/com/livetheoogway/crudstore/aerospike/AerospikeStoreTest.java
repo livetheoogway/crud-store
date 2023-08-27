@@ -57,29 +57,32 @@ class AerospikeStoreTest {
         aerospikeContainer.stop();
     }
 
+    private static void validateTestData(final Optional<TestData> testData, final TestData meToo) {
+        assertTrue(testData.isPresent());
+        assertEquals(meToo.id(), testData.get().id());
+        assertEquals(meToo.name(), testData.get().name());
+        assertEquals(meToo.age(), testData.get().age());
+    }
+
     @Test
     void testStoreOperations() {
 
         /* put some data */
-        store.create(new TestData("1", "me", 2));
+        final var me = DataUtils.generateTestData();
+        store.create(me);
 
         /* get it back */
-        Optional<TestData> testData = store.get("1");
-        assertTrue(testData.isPresent());
-        assertEquals("1", testData.get().id());
-        assertEquals("me", testData.get().name());
-        assertEquals(2, testData.get().age());
+        Optional<TestData> testData = store.get(me.id());
+        validateTestData(testData, me);
 
         /* get on unknown id */
         assertFalse(store.get("unknown").isPresent());
 
         /* update existing data */
-        store.update(new TestData("1", "me too", 5));
-        testData = store.get("1");
-        assertTrue(testData.isPresent());
-        assertEquals("1", testData.get().id());
-        assertEquals("me too", testData.get().name());
-        assertEquals(5, testData.get().age());
+        final var meToo = DataUtils.generateTestData(me.id());
+        store.update(meToo);
+        testData = store.get(meToo.id());
+        validateTestData(testData, meToo);
 
         /* update unknown id */
         assertThrows(RuntimeException.class, () -> store.update(new TestData("unknown", "me too", 5)));
@@ -88,10 +91,11 @@ class AerospikeStoreTest {
         assertThrows(RuntimeException.class, () -> store.create(new TestData("1", "me too", 5)));
 
         /* get bulk */
-        store.create(new TestData("2", "you", 5));
-        final Map<String, TestData> result = store.get(List.of("1", "2"));
-        assertTrue(result.containsKey("1"));
-        assertTrue(result.containsKey("2"));
+        final TestData you = DataUtils.generateTestData("2", "you", 5);
+        store.create(you);
+        final Map<String, TestData> result = store.get(List.of(meToo.id(), you.id()));
+        assertTrue(result.containsKey(meToo.id()));
+        assertTrue(result.containsKey(you.id()));
         assertEquals(2, result.size());
 
         /* list */
@@ -109,39 +113,33 @@ class AerospikeStoreTest {
                                                 new ObjectMapper(),
                                                 new DefaultErrorHandler<>());
         /* put some data */
-        storeWithReplace.create(new TestData("11", "me", 2));
+        final var me = DataUtils.generateTestData("11");
+        storeWithReplace.create(me);
 
         /* get it back */
-        Optional<TestData> testData = storeWithReplace.get("1");
-        assertTrue(testData.isPresent());
-        assertEquals("1", testData.get().id());
-        assertEquals("me", testData.get().name());
-        assertEquals(2, testData.get().age());
+        Optional<TestData> testData = storeWithReplace.get(me.id());
+        validateTestData(testData, me);
 
         /* get on unknown id */
         assertFalse(storeWithReplace.get("unknown").isPresent());
 
-        /* update existing data */
-        storeWithReplace.create(new TestData("1", "me too", 5));
-        testData = storeWithReplace.get("1");
-        assertTrue(testData.isPresent());
-        assertEquals("1", testData.get().id());
-        assertEquals("me too", testData.get().name());
-        assertEquals(5, testData.get().age());
+        /* create same data */
+        final var meAgain = DataUtils.generateTestData("11");
+        storeWithReplace.create(meAgain);
+        testData = storeWithReplace.get(meAgain.id());
+        validateTestData(testData, meAgain);
     }
 
     @Test
     void testStoreDeleteOperation() {
 
         /* put some data */
-        store.create(new TestData("1", "me", 2));
+        final var me = DataUtils.generateTestData("12");
+        store.create(me);
 
         /* get it back */
         Optional<TestData> testData = store.get("1");
-        assertTrue(testData.isPresent());
-        assertEquals("1", testData.get().id());
-        assertEquals("me", testData.get().name());
-        assertEquals(2, testData.get().age());
+        validateTestData(testData, me);
 
         /* delete it */
         store.delete("1");
