@@ -16,6 +16,7 @@ package com.livetheoogway.crudstore.aerospike;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
@@ -222,9 +223,9 @@ class AerospikeStoreTest {
 
     @Test
     void testHandlerForAerospikeExceptionDuringGet() {
-        final AerospikeClient newASClient = mock(AerospikeClient.class);
-        when(newASClient.get(any(Policy.class), any(Key.class))).thenThrow(AerospikeException.class);
+        final IAerospikeClient newASClient = mock(AerospikeClient.class);
         when(newASClient.getWritePolicyDefault()).thenReturn(aerospikeClient.getWritePolicyDefault());
+        when(newASClient.get(any(Policy.class), any(Key.class))).thenThrow(AerospikeException.class);
         doNothing().when(newASClient).put(any(WritePolicy.class), any(Key.class), any());
         final ErrorHandler<TestData> errorHandler = mock(ErrorHandler.class);
         final TestAerospikeStore newStore
