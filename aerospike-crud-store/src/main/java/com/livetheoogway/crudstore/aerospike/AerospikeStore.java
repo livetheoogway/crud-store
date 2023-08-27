@@ -29,7 +29,6 @@ import com.livetheoogway.crudstore.core.Store;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -49,7 +48,7 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
     protected final WritePolicy createPolicy;
     protected final WritePolicy updateOnly;
     protected final ErrorHandler<T> errorHandler;
-    private final TypeReference<T> typeReference;
+    protected final TypeReference<T> typeReference;
 
     protected AerospikeStore(final IAerospikeClient client,
                              final NamespaceSet namespaceSet,
@@ -257,9 +256,5 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
             client.put(writePolicy, requestIdKey, recordDetails.bins());
             return null;
         }, errorHandler);
-    }
-
-    private interface ESupplier<T> {
-        T get() throws Exception;
     }
 }
