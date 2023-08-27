@@ -184,12 +184,12 @@ class AerospikeStoreTest {
         newStore.create(testData);
         final Optional<TestData> result = newStore.get(testData.id());
         assertFalse(result.isPresent());
-        Mockito.verify(errorHandler, Mockito.times(1)).onSerializationError(any(), any());
+        Mockito.verify(errorHandler, Mockito.times(1)).onDeSerializationError(any(), any());
 
         final var anotherTestData = DataUtils.generateTestData("2");
         newStore.create(anotherTestData);
         final Map<String, TestData> result2 = newStore.get(List.of(testData.id(), anotherTestData.id()));
         assertTrue(result2.isEmpty());
-        Mockito.verify(errorHandler, Mockito.times(2)).onSerializationError(any(), any());
+        Mockito.verify(errorHandler, Mockito.times(3)).onDeSerializationError(any(), any());
     }
 }

@@ -234,7 +234,7 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
             return Optional.of(mapper.readValue(data, typeReference));
         } catch (JsonProcessingException e) {
             log.error("[{}] Deserialization error id:{} record:{}", typeReference.getType().getTypeName(), id, asRecord, e);
-            return errorHandler.onDeSerializationErrorDuringBulkGet(id, e);
+            return Optional.ofNullable(errorHandler.onDeSerializationError(id, e));
         }
     }
 
