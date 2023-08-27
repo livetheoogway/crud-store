@@ -15,12 +15,15 @@
 package com.livetheoogway.crudstore.aerospike;
 
 import com.aerospike.client.AerospikeClient;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.appform.testcontainers.aerospike.AerospikeContainerConfiguration;
 import io.appform.testcontainers.aerospike.container.AerospikeContainer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.util.List;
 import java.util.Map;
@@ -30,6 +33,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class AerospikeStoreTest {
     private static AerospikeContainer aerospikeContainer;
@@ -131,7 +138,7 @@ class AerospikeStoreTest {
     }
 
     @Test
-    void testStoreDeleteOperation() {
+    void testStoreDeleteExistingKeySuccessful() {
 
         /* put some data */
         final var me = DataUtils.generateTestData("12");
@@ -146,5 +153,37 @@ class AerospikeStoreTest {
 
         /* get it back */
         assertFalse(store.get(me.id()).isPresent());
+
+        /* delete unknown key */
+        assertThrows(RuntimeException.class, () -> store.delete("unknown"));
+    }
+
+    @Test
+    void testJsonSerializationExceptionDuringCreate() throws JsonProcessingException {
+        final ObjectMapper mapper = mock(ObjectMapper.class);
+        final ErrorHandler<TestData> errorHandler = mock(ErrorHandler.class);
+        when(mapper.writeValueAsString(any())).thenThrow(JsonProcessingException.class);
+        final TestAerospikeStore newStore
+                = new TestAerospikeStore(aerospikeClient,
+                                         new NamespaceSet("test", "json-error"),
+                                         mapper, errorHandler);
+        newStore.create(DataUtils.generateTestData());
+        Mockito.verify(errorHandler, Mockito.times(1)).onSerializationError(any(), any());
+
+    }
+    @Test
+    void testJsonSerializationExceptionDuringGet() throws JsonProcessingException {
+        final ObjectMapper mapper = mock(ObjectMapper.class);
+        final ErrorHandler<TestData> errorHandler = mock(ErrorHandler.class);
+        when(mapper.readValue(anyString(), any(TypeReference.class))).thenThrow(JsonProcessingException.class);
+        final TestAerospikeStore newStore
+                = new TestAerospikeStore(aerospikeClient,
+                                         new NamespaceSet("test", "json-error"),
+                                         mapper, errorHandler);
+        final var testData = DataUtils.generateTestData();
+        newStore.create(testData);
+        final Optional<TestData> result = newStore.get(testData.id());
+        assertFalse(result.isPresent());
+        Mockito.verify(errorHandler, Mockito.times(1)).onSerializationError(any(), any());
     }
 }
