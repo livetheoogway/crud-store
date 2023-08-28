@@ -1,12 +1,16 @@
 # Changelog
 
-## [Unreleased](https://github.com/livetheoogway/crud-store/tree/HEAD)
+## [1.2.4](https://github.com/livetheoogway/crud-store/tree/1.2.4) (2023-08-28)
 
-[Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.2.3...HEAD)
+[Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.2.3...1.2.4)
 
 **Closed issues:**
 
 - Support for TypeReference in AerospikeCrudStore [\#16](https://github.com/livetheoogway/crud-store/issues/16)
+
+**Merged pull requests:**
+
+- Added more tests for typeref based initialization [\#18](https://github.com/livetheoogway/crud-store/pull/18) ([Tushar-Naik](https://github.com/Tushar-Naik))
 
 ## [1.2.3](https://github.com/livetheoogway/crud-store/tree/1.2.3) (2023-08-27)
 
