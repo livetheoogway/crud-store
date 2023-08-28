@@ -79,7 +79,7 @@ public class MyAerospikeStore extends AerospikeStore<TestData> {
     }
 
     @Override
-    protected boolean isValidDataItem(final TestData testData) {
+    protected boolean isValidDataItem(final TestData userData) {
         return true; // you may do additional checks here
     }
 }

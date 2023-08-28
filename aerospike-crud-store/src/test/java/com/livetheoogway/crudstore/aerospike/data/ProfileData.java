@@ -12,17 +12,11 @@
  * under the License.
  */
 
-package com.livetheoogway.crudstore.aerospike;
+package com.livetheoogway.crudstore.aerospike.data;
 
-import com.aerospike.client.IAerospikeClient;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.livetheoogway.crudstore.core.Id;
 
-public class TestAerospikeStoreReplace extends AerospikeStore<TestData> {
-
-    protected TestAerospikeStoreReplace(final IAerospikeClient client,
-                                        final NamespaceSet namespaceSet,
-                                        final ObjectMapper mapper,
-                                        final ErrorHandler<TestData> errorHandler) {
-        super(client, namespaceSet, mapper, TestData.class, errorHandler, false);
-    }
+public record ProfileData<T>(
+        String id,
+        T profile) implements Id {
 }

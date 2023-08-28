@@ -5,7 +5,7 @@
     <parent>
         <artifactId>crud-store</artifactId>
         <groupId>com.livetheoogway.crudstore</groupId>
-        <version>1.2.3</version>
+        <version>1.2.4</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -66,6 +66,12 @@
             <groupId>org.mockito</groupId>
             <artifactId>mockito-inline</artifactId>
             <version>${junit.mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna</artifactId>
+            <version>5.7.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
