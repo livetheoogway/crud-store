@@ -133,7 +133,7 @@ class AerospikeStoreTest {
 
         final UserAerospikeReplaceStore storeWithReplace
                 = new UserAerospikeReplaceStore(aerospikeClient,
-                                                new NamespaceSet("test", "test-2"),
+                                                new NamespaceSet("test", "test-3"),
                                                 new ObjectMapper(),
                                                 new DefaultErrorHandler<>());
         /* put some data */
