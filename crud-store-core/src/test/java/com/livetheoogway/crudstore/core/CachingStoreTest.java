@@ -23,7 +23,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CachingStoreTest {
 
@@ -112,5 +115,11 @@ class CachingStoreTest {
         assertEquals("4", testData.get().id());
         assertEquals("four too", testData.get().name());
         assertEquals(7, testData.get().age());
+    }
+
+    @Test
+    void testUnsupportedErrorOnGetByRefId() {
+        Store<TestData> store = new CachingStore<>(new InMemoryStore<>(), 5, 2, 1);
+        assertThrows(UnsupportedOperationException.class, () -> store.getByRefId("some"));
     }
 }

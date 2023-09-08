@@ -12,26 +12,21 @@
  * under the License.
  */
 
-package com.livetheoogway.crudstore.core;
+package com.livetheoogway.crudstore.aerospike.data;
+
+import com.livetheoogway.crudstore.core.Id;
+import lombok.Builder;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
-public interface Store <T extends Id> {
-    void create(final T item);
-
-    void update(final T item);
-
-    void delete(final String id);
-
-    Optional<T> get(final String id);
-
-    Map<String, T> get(final List<String> ids);
-
-    List<T> list();
-
-    default List<T> getByRefId(final String refId) {
-        throw new UnsupportedOperationException("Not implemented");
+@Builder
+public record UserDataWithReferences(
+        String id,
+        String name,
+        List<String> references) implements Id {
+    @Override
+    public Optional<List<String>> refIds() {
+        return Optional.of(references);
     }
 }

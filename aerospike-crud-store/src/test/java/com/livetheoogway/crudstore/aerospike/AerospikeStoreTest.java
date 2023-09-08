@@ -24,6 +24,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.livetheoogway.crudstore.aerospike.data.ProfileData;
 import com.livetheoogway.crudstore.aerospike.data.UserData;
+import com.livetheoogway.crudstore.aerospike.data.UserDataWithReferences;
 import com.livetheoogway.crudstore.aerospike.stores.TestTypeRefAerospikeStore;
 import com.livetheoogway.crudstore.aerospike.stores.UserAerospikeReplaceStore;
 import com.livetheoogway.crudstore.aerospike.stores.UserAerospikeStore;
@@ -125,6 +126,81 @@ class AerospikeStoreTest {
                                           assertEquals(data.profile().age(), result.get().profile().age());
                                           return true;
                                       });
+    }
+
+    @Test
+    void testStoreOperationsForDataWithReferences() {
+
+        final TestTypeRefAerospikeStore<UserDataWithReferences> store
+                = new TestTypeRefAerospikeStore<>(aerospikeClient,
+                                                  new NamespaceSet("test", "test-4"),
+                                                  new ObjectMapper(),
+                                                  new TypeReference<>() {},
+                                                  new DefaultErrorHandler<>());
+
+        final var me = UserDataWithReferences.builder()
+                .id("EMP001")
+                .name("Tushar")
+                .references(List.of("Smart", "Handsome"))
+                .build();
+
+        final var meUpdated = UserDataWithReferences.builder()
+                .id("EMP001")
+                .name("Tushar Revamped")
+                .references(List.of("Smart", "Handsome"))
+                .build();
+
+        final var you = UserDataWithReferences.builder()
+                .id("EMP002")
+                .name("Pickle Rick")
+                .references(List.of("Cucumber", "Ugly"))
+                .build();
+
+        TestUtils.testStoreOperations(store,
+                                      () -> me,
+                                      () -> meUpdated,
+                                      () -> you,
+                                      () -> UserDataWithReferences.builder().id("unknown").build(),
+                                      AerospikeStoreTest::checkIfMatches);
+        var result = store.getByRefId("Smart");
+        checkIfMatches(meUpdated, result.stream().findFirst());
+        result = store.getByRefId("Handsome");
+        checkIfMatches(meUpdated, result.stream().findFirst());
+
+        /* get by unknown ref */
+        result = store.getByRefId("random");
+        assertTrue(result.isEmpty());
+
+        /* test if multiple records match */
+        store.create(UserDataWithReferences.builder()
+                             .id("EMP003")
+                             .name("Morty")
+                             .references(List.of("Stupid", "Smart"))
+                             .build());
+        result = store.getByRefId("Smart");
+        assertEquals(2, result.size());
+        assertTrue(result.stream().anyMatch(data -> data.id().equals("EMP001")));
+        assertTrue(result.stream().anyMatch(data -> data.id().equals("EMP003")));
+
+        /* test if multiple records match */
+        store.create(UserDataWithReferences.builder()
+                             .id("EMP004")
+                             .name("Summer")
+                             .references(List.of("Stupid", "Smart", "Smart"))
+                             .build());
+        result = store.getByRefId("Smart");
+        assertEquals(3, result.size());
+        assertTrue(result.stream().anyMatch(data -> data.id().equals("EMP001")));
+        assertTrue(result.stream().anyMatch(data -> data.id().equals("EMP003")));
+        assertTrue(result.stream().anyMatch(data -> data.id().equals("EMP004")));
+    }
+
+    private static boolean checkIfMatches(final UserDataWithReferences data, final Optional<UserDataWithReferences> result) {
+        assertTrue(result.isPresent());
+        assertEquals(data.id(), result.get().id());
+        assertEquals(data.name(), result.get().name());
+        assertEquals(data.references(), result.get().references());
+        return true;
     }
 
 

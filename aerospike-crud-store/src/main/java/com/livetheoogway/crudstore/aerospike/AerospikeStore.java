@@ -21,19 +21,26 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.query.Filter;
+import com.aerospike.client.query.IndexCollectionType;
+import com.aerospike.client.query.IndexType;
+import com.aerospike.client.query.RecordSet;
+import com.aerospike.client.query.Statement;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.livetheoogway.crudstore.core.Id;
 import com.livetheoogway.crudstore.core.Store;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 
+import javax.validation.constraints.NotEmpty;
+import javax.validation.constraints.NotNull;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -42,7 +49,10 @@ import java.util.stream.IntStream;
 @Slf4j
 public abstract class AerospikeStore<T extends Id> implements Store<T> {
 
-    protected static final String DATA = "data";
+    private static final String DEFAULT_DATA_BIN = "data";
+    private static final String DEFAULT_REF_ID_BIN = "refId";
+    private static final String DEFAULT_REF_ID_INDEX_SUFFIX = "_idx";
+
     protected final ObjectMapper mapper;
     protected final IAerospikeClient client;
     protected final NamespaceSet namespaceSet;
@@ -50,13 +60,14 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
     protected final WritePolicy updateOnly;
     protected final ErrorHandler<T> errorHandler;
     protected final TypeReference<T> typeReference;
+    protected final AerospikeStoreSetting storeSetting;
 
     protected AerospikeStore(final IAerospikeClient client,
                              final NamespaceSet namespaceSet,
                              final ObjectMapper mapper,
                              final Class<T> clazz,
                              final ErrorHandler<T> errorHandler) {
-        this(client, namespaceSet, mapper, clazz, errorHandler, true);
+        this(client, namespaceSet, mapper, clazz, errorHandler, null);
     }
 
     protected AerospikeStore(final IAerospikeClient client,
@@ -64,13 +75,13 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
                              final ObjectMapper mapper,
                              final Class<T> clazz,
                              final ErrorHandler<T> errorHandler,
-                             final boolean failOnCreateIfRecordExists) {
+                             final AerospikeStoreSetting storeSetting) {
         this(client, namespaceSet, mapper, new TypeReference<>() {
             @Override
             public Type getType() {
                 return clazz;
             }
-        }, errorHandler, failOnCreateIfRecordExists);
+        }, errorHandler, storeSetting);
     }
 
     protected AerospikeStore(final IAerospikeClient client,
@@ -78,7 +89,7 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
                              final ObjectMapper mapper,
                              final TypeReference<T> typeReference,
                              final ErrorHandler<T> errorHandler) {
-        this(client, namespaceSet, mapper, typeReference, errorHandler, true);
+        this(client, namespaceSet, mapper, typeReference, errorHandler, null);
     }
 
     protected AerospikeStore(final IAerospikeClient client,
@@ -86,17 +97,20 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
                              final ObjectMapper mapper,
                              final TypeReference<T> typeReference,
                              final ErrorHandler<T> errorHandler,
-                             final boolean failOnCreateIfRecordExists) {
+                             final AerospikeStoreSetting storeSetting) {
         this.client = client;
         this.namespaceSet = namespaceSet;
         this.mapper = mapper;
         this.errorHandler = errorHandler;
         this.typeReference = typeReference;
         this.createPolicy = new WritePolicy(client.getWritePolicyDefault());
-        createPolicy.recordExistsAction = failOnCreateIfRecordExists ? RecordExistsAction.CREATE_ONLY
-                                                                     : RecordExistsAction.REPLACE;
+        this.storeSetting = defaultIfNull(storeSetting, namespaceSet.set());
+        createPolicy.recordExistsAction = this.storeSetting.failOnCreateIfRecordExists()
+                                          ? RecordExistsAction.CREATE_ONLY
+                                          : RecordExistsAction.REPLACE;
         this.updateOnly = new WritePolicy(client.getWritePolicyDefault());
         updateOnly.recordExistsAction = RecordExistsAction.UPDATE_ONLY;
+        setupIndexes();
     }
 
     /**
@@ -143,7 +157,7 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
     @Override
     public void delete(final String id) {
         exec("delete", id, () -> {
-            final Key requestIdKey = new Key(namespaceSet.namespace(), namespaceSet.set(), id);
+            final var requestIdKey = new Key(namespaceSet.namespace(), namespaceSet.set(), id);
             if (!client.delete(updateOnly, requestIdKey)) {
                 errorHandler.onDeleteUnsuccessful();
             }
@@ -160,8 +174,8 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
     @Override
     public Optional<T> get(final String id) {
         final T data = exec("get", id, () -> {
-            final Key requestIdKey = new Key(namespaceSet.namespace(), namespaceSet.set(), id);
-            final Record asRecord = client.get(client.getReadPolicyDefault(), requestIdKey);
+            final var requestIdKey = new Key(namespaceSet.namespace(), namespaceSet.set(), id);
+            final var asRecord = client.get(client.getReadPolicyDefault(), requestIdKey);
             return extractItem(id, asRecord);
         }, errorHandler);
         if (isValidDataItem(data)) {
@@ -180,7 +194,7 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
      */
     @Override
     public Map<String, T> get(final List<String> ids) {
-        final Key[] batchReads = ids.stream()
+        final var batchReads = ids.stream()
                 .map(id -> (new Key(namespaceSet.namespace(), namespaceSet.set(), id)))
                 .toArray(Key[]::new);
         final Record[] records = client.get(client.getBatchPolicyDefault(), batchReads);
@@ -212,15 +226,40 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
         return items;
     }
 
+    @Override
+    public List<T> getByRefId(final String refId) {
+        final var statement = new Statement();
+        statement.setNamespace(namespaceSet.namespace());
+        statement.setSetName(namespaceSet.set());
+        statement.setIndexName(storeSetting.refIdIndex());
+        statement.setFilter(Filter.contains(storeSetting.refIdBin(), IndexCollectionType.LIST, refId));
+        final List<T> results = new ArrayList<>();
+        try (final RecordSet recordSet = client.query(client.getQueryPolicyDefault(), statement)) {
+            while (recordSet.next()) {
+                final T t = extractItem(recordSet.getKey().userKey.toString(), recordSet.getRecord());
+                if (isValidDataItem(t)) {
+                    results.add(t);
+                } else {
+                    log.warn("Invalid item found for id:{}", t.id());
+                }
+            }
+        } catch (AerospikeException e) {
+            log.error("[{}] Aerospike Error {} item for id:{}", typeReference.getType().getTypeName(), "getByRefId", refId, e);
+            return errorHandler.onAerospikeErrorForRefId(refId, e);
+        }
+        return results;
+    }
+
     public T extractItem(String id, Record asRecord) {
         if (asRecord == null) {
             return errorHandler.onNoRecordFound(id);
         }
-        val data = asRecord.getString(DATA);
+        final var data = asRecord.getString(storeSetting.dataBin());
         try {
             return mapper.readValue(data, typeReference);
         } catch (JsonProcessingException e) {
-            log.error("[{}] Deserialization error id:{} record:{}", typeReference.getType().getTypeName(), id, asRecord, e);
+            log.error("[{}] Deserialization error id:{} record:{}", typeReference.getType().getTypeName(), id, asRecord,
+                      e);
             return errorHandler.onDeSerializationError(id, e);
         }
     }
@@ -229,17 +268,23 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
         if (asRecord == null) {
             return Optional.ofNullable(errorHandler.onNoRecordFound(id));
         }
-        val data = asRecord.getString(DATA);
+        final var data = asRecord.getString(storeSetting.dataBin());
         try {
             return Optional.of(mapper.readValue(data, typeReference));
         } catch (JsonProcessingException e) {
-            log.error("[{}] Deserialization error id:{} record:{}", typeReference.getType().getTypeName(), id, asRecord, e);
+            log.error("[{}] Deserialization error id:{} record:{}", typeReference.getType().getTypeName(), id, asRecord,
+                      e);
             return Optional.ofNullable(errorHandler.onDeSerializationError(id, e));
         }
     }
 
     protected RecordDetails recordDetails(T item) throws JsonProcessingException {
-        final Bin dataBin = new Bin(DATA, mapper.writeValueAsString(item));
+        final var dataBin = new Bin(storeSetting.dataBin(), mapper.writeValueAsString(item));
+        final var refIds = item.refIds();
+        if (refIds.isPresent()) {
+            final var refIdBin = new Bin(storeSetting.refIdBin(), refIds.get());
+            return new RecordDetails(expiration(item), dataBin, refIdBin);
+        }
         return new RecordDetails(expiration(item), dataBin);
     }
 
@@ -269,17 +314,56 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
     }
 
     private void write(final T item, WritePolicy defaultWritePolicy) {
-        val id = item.id();
+        final var id = item.id();
         exec("operation:" + defaultWritePolicy.recordExistsAction, id, () -> {
-            val recordDetails = recordDetails(item);
+            final var recordDetails = recordDetails(item);
             var writePolicy = defaultWritePolicy;
             if (recordDetails.expiration() > 0) {
                 writePolicy = new WritePolicy(writePolicy);
                 writePolicy.expiration = recordDetails.expiration();
             }
-            val requestIdKey = new Key(namespaceSet.namespace(), namespaceSet.set(), id);
+            final var requestIdKey = new Key(namespaceSet.namespace(), namespaceSet.set(), id);
             client.put(writePolicy, requestIdKey, recordDetails.bins());
             return null;
         }, errorHandler);
+    }
+
+    private void setupIndexes() {
+        try {
+            final var refIdIndexTask = client
+                    .createIndex(null, namespaceSet.namespace(), namespaceSet.set(),
+                                 storeSetting.refIdIndex(), storeSetting.refIdBin(),
+                                 IndexType.STRING,
+                                 IndexCollectionType.LIST);
+            if (refIdIndexTask != null) {
+                refIdIndexTask.waitTillComplete();
+                log.info("Created index: {}", storeSetting.refIdIndex());
+            }
+        } catch (AerospikeException e) {
+            if (e.getResultCode() == 100) {
+                log.info("Index already exists:{}", storeSetting.refIdIndex());
+                return;
+            }
+            log.error("Error while creating index:{}", storeSetting.refIdIndex(), e);
+            throw e;
+        }
+    }
+
+    private AerospikeStoreSetting defaultIfNull(final AerospikeStoreSetting storeSetting,
+                                                final @NotNull @NotEmpty String set) {
+        final var builder = AerospikeStoreSetting.builder();
+        if (storeSetting == null) {
+            return builder
+                    .dataBin(DEFAULT_DATA_BIN)
+                    .refIdBin(DEFAULT_REF_ID_BIN)
+                    .failOnCreateIfRecordExists(true)
+                    .refIdIndex(set + DEFAULT_REF_ID_INDEX_SUFFIX).build();
+        }
+        builder.dataBin(Objects.requireNonNullElse(storeSetting.dataBin(), DEFAULT_DATA_BIN));
+        final var refIdBin = Objects.requireNonNullElse(storeSetting.refIdBin(), DEFAULT_REF_ID_BIN);
+        builder.refIdBin(refIdBin);
+        builder.refIdIndex(Objects.requireNonNullElse(storeSetting.refIdIndex(),
+                                                      set + "_" + refIdBin + DEFAULT_REF_ID_INDEX_SUFFIX));
+        return builder.build();
     }
 }

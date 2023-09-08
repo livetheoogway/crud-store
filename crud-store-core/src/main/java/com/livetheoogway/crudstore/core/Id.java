@@ -14,6 +14,13 @@
 
 package com.livetheoogway.crudstore.core;
 
+import java.util.List;
+import java.util.Optional;
+
 public interface Id {
     String id();
+
+    default Optional<List<String>> refIds() {
+        return Optional.empty();
+    }
 }

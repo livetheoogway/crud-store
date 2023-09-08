@@ -17,6 +17,7 @@ package com.livetheoogway.crudstore.aerospike.stores;
 import com.aerospike.client.IAerospikeClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.livetheoogway.crudstore.aerospike.AerospikeStore;
+import com.livetheoogway.crudstore.aerospike.AerospikeStoreSetting;
 import com.livetheoogway.crudstore.aerospike.ErrorHandler;
 import com.livetheoogway.crudstore.aerospike.NamespaceSet;
 import com.livetheoogway.crudstore.aerospike.data.UserData;
@@ -27,6 +28,7 @@ public class UserAerospikeReplaceStore extends AerospikeStore<UserData> {
                                      final NamespaceSet namespaceSet,
                                      final ObjectMapper mapper,
                                      final ErrorHandler<UserData> errorHandler) {
-        super(client, namespaceSet, mapper, UserData.class, errorHandler, false);
+        super(client, namespaceSet, mapper, UserData.class, errorHandler, AerospikeStoreSetting.builder()
+                .failOnCreateIfRecordExists(false).build());
     }
 }
