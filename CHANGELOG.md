@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.2.4](https://github.com/livetheoogway/crud-store/tree/1.2.4) (2023-08-28)
+
+[Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.2.3...1.2.4)
+
+**Closed issues:**
+
+- Support for TypeReference in AerospikeCrudStore [\#16](https://github.com/livetheoogway/crud-store/issues/16)
+
+**Merged pull requests:**
+
+- Added more tests for typeref based initialization [\#18](https://github.com/livetheoogway/crud-store/pull/18) ([Tushar-Naik](https://github.com/Tushar-Naik))
+
+## [1.2.3](https://github.com/livetheoogway/crud-store/tree/1.2.3) (2023-08-27)
+
+[Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.2.2...1.2.3)
+
+**Implemented enhancements:**
+
+- allow expiration to be modifiable [\#13](https://github.com/livetheoogway/crud-store/issues/13)
+- make isValidItem\(\) an optional extension [\#12](https://github.com/livetheoogway/crud-store/issues/12)
+
+**Merged pull requests:**
+
+- Adding support for TypeReference  [\#17](https://github.com/livetheoogway/crud-store/pull/17) ([Tushar-Naik](https://github.com/Tushar-Naik))
+
 ## [1.2.2](https://github.com/livetheoogway/crud-store/tree/1.2.2) (2022-12-12)
 
 [Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.2.0...1.2.2)
