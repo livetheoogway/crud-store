@@ -17,6 +17,8 @@ package com.livetheoogway.crudstore.aerospike;
 import com.aerospike.client.AerospikeException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 
+import java.util.List;
+
 @SuppressWarnings("java:S112")
 public interface ErrorHandler<T> {
     void onDeleteUnsuccessful();
@@ -26,6 +28,10 @@ public interface ErrorHandler<T> {
     T onDeSerializationError(String id, final JsonProcessingException e);
 
     T onAerospikeError(String id, AerospikeException e);
+
+    default List<T> onAerospikeErrorForRefId(String id, AerospikeException e) {
+        return List.of();
+    }
 
     T onSerializationError(final String id, JsonProcessingException e);
 
