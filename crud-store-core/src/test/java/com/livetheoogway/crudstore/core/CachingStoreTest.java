@@ -48,7 +48,7 @@ class CachingStoreTest {
         /* update existing data */
         final var updated = new TestData("1", "me too", 5);
         store.update(updated);
-        assertIfValid(updated, store.get("1"));
+        assertIfValid(expected, store.get("1")); // should be old data as its cached
 
         /* update unknown id */
         assertThrows(RuntimeException.class, () -> store.update(new TestData("unknown", "me too", 5)));
