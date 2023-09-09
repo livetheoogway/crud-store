@@ -12,21 +12,23 @@
  * under the License.
  */
 
-package com.livetheoogway.crudstore.aerospike.data;
+package com.livetheoogway.crudstore.core;
 
-import com.livetheoogway.crudstore.core.Id;
-import lombok.Builder;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
-import java.util.List;
 import java.util.Optional;
 
-@Builder
-public record UserDataWithReferences(
-        String id,
-        String name,
-        List<String> references) implements Id {
-    @Override
-    public Optional<List<String>> refIds() {
-        return Optional.of(references);
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public class TestUtils {
+    public static boolean assertIfValid(final TestData expected, final Optional<TestData> actual) {
+        assertTrue(actual.isPresent());
+        assertEquals(expected.id(), actual.get().id());
+        assertEquals(expected.name(), actual.get().name());
+        assertEquals(expected.age(), actual.get().age());
+        return true;
     }
 }

@@ -30,7 +30,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.livetheoogway.crudstore.core.Id;
-import com.livetheoogway.crudstore.core.Store;
+import com.livetheoogway.crudstore.core.ReferenceExtendedStore;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.validation.constraints.NotEmpty;
@@ -47,7 +47,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @Slf4j
-public abstract class AerospikeStore<T extends Id> implements Store<T> {
+public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedStore<T> {
 
     private static final String DEFAULT_DATA_BIN = "data";
     private static final String DEFAULT_REF_ID_BIN = "refId";
@@ -140,7 +140,12 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
      */
     @Override
     public void create(final T item) {
-        write(item, createPolicy);
+        write(item, null, createPolicy);
+    }
+
+    @Override
+    public void create(final T item, List<String> refIds) {
+        write(item, refIds, createPolicy);
     }
 
     /**
@@ -150,7 +155,7 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
      */
     @Override
     public void update(final T item) {
-        write(item, updateOnly);
+        write(item, null, updateOnly);
     }
 
 
@@ -278,11 +283,10 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
         }
     }
 
-    protected RecordDetails recordDetails(T item) throws JsonProcessingException {
+    protected RecordDetails recordDetails(T item, List<String> refIds) throws JsonProcessingException {
         final var dataBin = new Bin(storeSetting.dataBin(), mapper.writeValueAsString(item));
-        final var refIds = item.refIds();
-        if (refIds.isPresent()) {
-            final var refIdBin = new Bin(storeSetting.refIdBin(), refIds.get());
+        if (refIds!=null && !refIds.isEmpty()) {
+            final var refIdBin = new Bin(storeSetting.refIdBin(), refIds);
             return new RecordDetails(expiration(item), dataBin, refIdBin);
         }
         return new RecordDetails(expiration(item), dataBin);
@@ -313,10 +317,10 @@ public abstract class AerospikeStore<T extends Id> implements Store<T> {
         }
     }
 
-    private void write(final T item, WritePolicy defaultWritePolicy) {
+    private void write(final T item, List<String> refIds,  WritePolicy defaultWritePolicy) {
         final var id = item.id();
         exec("operation:" + defaultWritePolicy.recordExistsAction, id, () -> {
-            final var recordDetails = recordDetails(item);
+            final var recordDetails = recordDetails(item, refIds);
             var writePolicy = defaultWritePolicy;
             if (recordDetails.expiration() > 0) {
                 writePolicy = new WritePolicy(writePolicy);

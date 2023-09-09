@@ -15,8 +15,9 @@
 package com.livetheoogway.crudstore.core.impl;
 
 import com.livetheoogway.crudstore.core.Id;
-import com.livetheoogway.crudstore.core.Store;
+import com.livetheoogway.crudstore.core.ReferenceExtendedStore;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,15 +25,17 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class InMemoryStore<T extends Id> implements Store<T> {
+public class InMemoryStore<T extends Id> implements ReferenceExtendedStore<T> {
     private final Map<String, T> store;
+    private final Map<String, List<String>> index;
 
     public InMemoryStore() {
-        this(new HashMap<>());
+        this(new HashMap<>(), new HashMap<>());
     }
 
-    public InMemoryStore(final Map<String, T> store) {
+    public InMemoryStore(final Map<String, T> store, Map<String, List<String>> index) {
         this.store = store;
+        this.index = index;
     }
 
     @Override
@@ -73,5 +76,23 @@ public class InMemoryStore<T extends Id> implements Store<T> {
     @Override
     public List<T> list() {
         return store.values().stream().toList();
+    }
+
+    @Override
+    public void create(final T item, final List<String> refIds) {
+        create(item);
+        refIds.forEach(refId -> {
+            if(!index.containsKey(refId)) {
+                index.put(refId, new ArrayList<>());
+            }
+            index.get(refId).add(item.id());
+        });
+    }
+
+    @Override
+    public List<T> getByRefId(final String refId) {
+        return index.getOrDefault(refId, List.of()).stream()
+                .map(store::get)
+                .toList();
     }
 }

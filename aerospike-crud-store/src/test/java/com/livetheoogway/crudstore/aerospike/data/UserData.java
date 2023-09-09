@@ -15,7 +15,9 @@
 package com.livetheoogway.crudstore.aerospike.data;
 
 import com.livetheoogway.crudstore.core.Id;
+import lombok.Builder;
 
+@Builder
 public record UserData(
         String id,
         String name,

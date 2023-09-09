@@ -15,6 +15,7 @@
 package com.livetheoogway.crudstore.aerospike.util;
 
 import com.livetheoogway.crudstore.aerospike.AerospikeStore;
+import com.livetheoogway.crudstore.aerospike.data.IdWithRefs;
 import com.livetheoogway.crudstore.core.Id;
 import lombok.experimental.UtilityClass;
 
@@ -43,16 +44,16 @@ public class TestUtils {
      * @param validator   validator to check if data from store is correct
      * @param <T>         type of data
      */
-    public <T extends Id> void testStoreOperations(final AerospikeStore<T> store,
-                                                   final Supplier<T> initialData,
-                                                   final Supplier<T> updatedData,
-                                                   final Supplier<T> anotherData,
-                                                   final Supplier<T> unknownData,
-                                                   final BiFunction<T, Optional<T>, Boolean> validator) {
+    public <T extends Id> void assertStoreOperations(final AerospikeStore<T> store,
+                                                     final Supplier<IdWithRefs<T>> initialData,
+                                                     final Supplier<IdWithRefs<T>> updatedData,
+                                                     final Supplier<IdWithRefs<T>> anotherData,
+                                                     final Supplier<IdWithRefs<T>> unknownData,
+                                                     final BiFunction<T, Optional<T>, Boolean> validator) {
 
         /* put some data */
-        final T data = initialData.get();
-        store.create(data);
+        final T data = initialData.get().item();
+        store.create(data, initialData.get().refIds());
 
         /* get it back */
         final var result = store.get(data.id());
@@ -63,21 +64,21 @@ public class TestUtils {
 
         /* update existing data */
         final var updated = updatedData.get();
-        store.update(updated);
-        final var updatedResult = store.get(updated.id());
-        assertTrue(validator.apply(updated, updatedResult));
+        store.update(updated.item());
+        final var updatedResult = store.get(updated.item().id());
+        assertTrue(validator.apply(updated.item(), updatedResult));
 
         /* update unknown id */
-        assertThrows(RuntimeException.class, () -> store.update(unknownData.get()));
+        assertThrows(RuntimeException.class, () -> store.update(unknownData.get().item()));
 
         /* create already existing id */
         assertThrows(RuntimeException.class, () -> store.create(data));
 
         /* get bulk */
-        final T another = anotherData.get();
-        store.create(another);
-        final Map<String, T> resultMap = store.get(List.of(updated.id(), another.id()));
-        assertTrue(resultMap.containsKey(updated.id()));
+        final T another = anotherData.get().item();
+        store.create(another, anotherData.get().refIds());
+        final Map<String, T> resultMap = store.get(List.of(updated.item().id(), another.id()));
+        assertTrue(resultMap.containsKey(updated.item().id()));
         assertTrue(resultMap.containsKey(another.id()));
         assertEquals(2, resultMap.size());
 
