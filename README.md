@@ -29,15 +29,14 @@
 
 ## What is it?
 
-This is supposed to be a very simple codebase, with even simpler features.<br>
 I used to write these crud stores several times across use-cases, decided to create a simple interface, and some default
-abstractions of some popular databases that implements the interface.<br>
-I've been able to add the abstraction for aerospike. Impls for other databases are welcome.
+abstractions of popular databases that implements the interface.<br>
+I've been able to add the abstraction for aerospike. Impls for other databases as contributions are welcome.
 
 ## Features
 
 #### The interface
-The following are the CRUD ops in the Store interface (pretty self explanatory)
+The following are the CRUD ops in the Store interface (pretty self-explanatory)
 ```java
     void create(final T item);
     void update(final T item);
