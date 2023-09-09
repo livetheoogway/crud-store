@@ -114,14 +114,14 @@ class AerospikeStoreTest {
                                         () -> DataUtils.generateProfileData(me.item().id()),
                                         () -> DataUtils.generateProfileData("2"),
                                         () -> IdWithRefs.of(
-                                              new ProfileData<>("unknown", new UserData("unknown", "me too", 5))),
+                                                new ProfileData<>("unknown", new UserData("unknown", "me too", 5))),
                                         (data, result) -> {
-                                          assertTrue(result.isPresent());
-                                          assertEquals(data.id(), result.get().id());
-                                          assertEquals(data.profile().name(), result.get().profile().name());
-                                          assertEquals(data.profile().age(), result.get().profile().age());
-                                          return true;
-                                      });
+                                            assertTrue(result.isPresent());
+                                            assertEquals(data.id(), result.get().id());
+                                            assertEquals(data.profile().name(), result.get().profile().name());
+                                            assertEquals(data.profile().age(), result.get().profile().age());
+                                            return true;
+                                        });
     }
 
     @Test
@@ -160,7 +160,7 @@ class AerospikeStoreTest {
 
         /* test if multiple records match */
         store.create(UserData.builder().id("EMP003").name("Morty").build(),
-                                   List.of("Stupid", "Smart"));
+                     List.of("Stupid", "Smart"));
         result = store.getByRefId("Smart");
         assertEquals(2, result.size());
         assertTrue(result.stream().anyMatch(data -> data.id().equals("EMP001")));

@@ -107,9 +107,14 @@ public record TestData(
 That is it, you should be good to go to do the following
 ```java
 public class Logic {
-    private AerospikeStore<TestData> store = new MyAerospikeStore(
-            
-    );
+    private AerospikeStore<TestData> store
+            = new MyAerospikeStore(
+                        AerospikeClientHelpers.aerospikeClient(AerospikeConfiguration.builder()
+                                                           .hosts("...") // set the rest
+                                                           .build()), new NamespaceSet("test", "test-set"),
+                        mapper, 
+                        TestData.class, 
+                        new DefaultErrorHandler<>());
 
     void myOperations() {
         store.create(new TestData("Id001", "Rick", 47));
