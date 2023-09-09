@@ -18,20 +18,56 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public interface Store <T extends Id> {
+/**
+ * The main Store interface with basic CRUD operations
+ *
+ * @param <T> type of item being stored, must implement the Id interface
+ */
+public interface Store<T extends Id> {
+
+    /**
+     * Create a new item
+     *
+     * @param item item to be created
+     */
     void create(final T item);
 
+    /**
+     * Update an existing item
+     *
+     * @param item item to be updated
+     */
     void update(final T item);
 
+    /**
+     * Delete an existing item
+     *
+     * @param id id of the item to be deleted
+     */
     void delete(final String id);
 
+    /**
+     * Get an existing item
+     *
+     * @param id id of the item to be fetched
+     * @return item if found
+     */
     Optional<T> get(final String id);
 
+    /**
+     * Get multiple items
+     *
+     * @param ids ids of the items to be fetched
+     * @return map of id to item
+     */
     Map<String, T> get(final List<String> ids);
 
+    /**
+     * List all items
+     * Note: This is to be used carefully, as this might have memory implications based on the type of underlying
+     * datastore being used
+     *
+     * @return list of all items
+     */
     List<T> list();
-
-    default List<T> getByRefId(final String refId) {
-        throw new UnsupportedOperationException("Not implemented");
-    }
 }

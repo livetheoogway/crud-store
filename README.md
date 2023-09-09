@@ -37,7 +37,7 @@ I've been able to add the abstraction for aerospike. Impls for other databases a
 ## Features
 
 #### The interface
-The following functions are supported in the interface
+The following are the CRUD ops in the Store interface (pretty self explanatory)
 ```java
     void create(final T item);
     void update(final T item);
@@ -45,6 +45,11 @@ The following functions are supported in the interface
     Optional<T> get(final String id);
     Map<String, T> get(final List<String> ids);
     List<T> list();
+```
+An extension to this has been added (since 1.2.5) ReferenceExtendedStore, to support fetch by references through indexes if a Store is able to support it.
+```java
+    void create(final T item, final List<String> refIds);
+    List<T> getByRefId(final String refId);
 ```
 
 #### Cached Store
@@ -64,7 +69,12 @@ Store<MyData> store=new CachingStore(
 #### Aerospike Store
 
 This impl provides crud for your data by storing it in a default set (`data`), hides details of
-serialization/de-serserialization, provides hook for proper error handling
+serialization/de-serserialization, provides hook for proper error handling.<br>
+
+It also supports indexing on references, as it implements a ReferenceExtendedStore. 
+So if you have data that needs to be retrieved through some reference ids, you can do so in an optimal manner. Internally,
+a LIST s-index is created, and an Aerospike query on the index is fired during retrieval
+
 Usage:
 
 ```java
@@ -81,6 +91,35 @@ public class MyAerospikeStore extends AerospikeStore<TestData> {
     @Override
     protected boolean isValidDataItem(final TestData userData) {
         return true; // you may do additional checks here
+    }
+}
+```
+Your TestData class can look something like this
+```java
+@Builder
+public record TestData(
+        String id, 
+        String name, 
+        int age) implements Id {
+}
+```
+
+That is it, you should be good to go to do the following
+```java
+public class Logic {
+    private AerospikeStore<TestData> store = new MyAerospikeStore(
+            
+    );
+
+    void myOperations() {
+        store.create(new TestData("Id001", "Rick", 47));
+        store.create(new TestData("Id001", "Rick", 47), List.of("animated"));
+        store.update(new TestData("Id001", "Rick Sanchez", 48));
+        Optional<TestData> result = store.get("Id001");
+        List<TestData> result = store.getByRefId("animated");
+        List<TestData> result = store.get(List.of("Id001", "Id002"));
+        List<TestData> result = store.list();
+        store.delete("Id001");
     }
 }
 ```

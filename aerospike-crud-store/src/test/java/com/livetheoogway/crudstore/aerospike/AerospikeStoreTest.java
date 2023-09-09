@@ -22,9 +22,9 @@ import com.aerospike.client.policy.WritePolicy;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.livetheoogway.crudstore.aerospike.data.IdWithRefs;
 import com.livetheoogway.crudstore.aerospike.data.ProfileData;
 import com.livetheoogway.crudstore.aerospike.data.UserData;
-import com.livetheoogway.crudstore.aerospike.data.UserDataWithReferences;
 import com.livetheoogway.crudstore.aerospike.stores.TestTypeRefAerospikeStore;
 import com.livetheoogway.crudstore.aerospike.stores.UserAerospikeReplaceStore;
 import com.livetheoogway.crudstore.aerospike.stores.UserAerospikeStore;
@@ -78,29 +78,24 @@ class AerospikeStoreTest {
         aerospikeContainer.stop();
     }
 
-    private static void validateTestData(final Optional<UserData> testData, final UserData meToo) {
-        assertTrue(testData.isPresent());
-        assertEquals(meToo.id(), testData.get().id());
-        assertEquals(meToo.name(), testData.get().name());
-        assertEquals(meToo.age(), testData.get().age());
+    private static boolean assertIfValid(final UserData expected, final Optional<UserData> actual) {
+        assertTrue(actual.isPresent());
+        assertEquals(expected.id(), actual.get().id());
+        assertEquals(expected.name(), actual.get().name());
+        assertEquals(expected.age(), actual.get().age());
+        return true;
     }
 
     @Test
     void testStoreOperations() {
 
-        final UserData me = DataUtils.generateTestData();
-        TestUtils.testStoreOperations(store,
-                                      () -> me,
-                                      () -> DataUtils.generateTestData(me.id()),
-                                      () -> DataUtils.generateTestData("2", "you", 5),
-                                      () -> new UserData("unknown", "me too", 5),
-                                      (data, result) -> {
-                                          assertTrue(result.isPresent());
-                                          assertEquals(data.id(), result.get().id());
-                                          assertEquals(data.name(), result.get().name());
-                                          assertEquals(data.age(), result.get().age());
-                                          return true;
-                                      });
+        final var me = DataUtils.generateTestData();
+        TestUtils.assertStoreOperations(store,
+                                        () -> me,
+                                        () -> DataUtils.generateTestData(me.item().id()),
+                                        () -> DataUtils.generateTestData("2", "you", 5),
+                                        () -> IdWithRefs.of(new UserData("unknown", "me too", 5)),
+                                        AerospikeStoreTest::assertIfValid);
     }
 
     @Test
@@ -113,13 +108,14 @@ class AerospikeStoreTest {
                                                   new TypeReference<>() {},
                                                   new DefaultErrorHandler<>());
 
-        final ProfileData<UserData> me = DataUtils.generateProfileData();
-        TestUtils.testStoreOperations(store,
-                                      () -> me,
-                                      () -> DataUtils.generateProfileData(me.id()),
-                                      () -> DataUtils.generateProfileData("2"),
-                                      () -> new ProfileData<>("unknown", new UserData("unknown", "me too", 5)),
-                                      (data, result) -> {
+        final var me = DataUtils.generateProfileData();
+        TestUtils.assertStoreOperations(store,
+                                        () -> me,
+                                        () -> DataUtils.generateProfileData(me.item().id()),
+                                        () -> DataUtils.generateProfileData("2"),
+                                        () -> IdWithRefs.of(
+                                              new ProfileData<>("unknown", new UserData("unknown", "me too", 5))),
+                                        (data, result) -> {
                                           assertTrue(result.isPresent());
                                           assertEquals(data.id(), result.get().id());
                                           assertEquals(data.profile().name(), result.get().profile().name());
@@ -131,78 +127,53 @@ class AerospikeStoreTest {
     @Test
     void testStoreOperationsForDataWithReferences() {
 
-        final TestTypeRefAerospikeStore<UserDataWithReferences> store
+        final TestTypeRefAerospikeStore<UserData> store
                 = new TestTypeRefAerospikeStore<>(aerospikeClient,
                                                   new NamespaceSet("test", "test-4"),
                                                   new ObjectMapper(),
                                                   new TypeReference<>() {},
                                                   new DefaultErrorHandler<>());
 
-        final var me = UserDataWithReferences.builder()
-                .id("EMP001")
-                .name("Tushar")
-                .references(List.of("Smart", "Handsome"))
-                .build();
+        final var me = IdWithRefs.of(UserData.builder().id("EMP001").name("Tushar").build(),
+                                     List.of("Smart", "Handsome"));
 
-        final var meUpdated = UserDataWithReferences.builder()
-                .id("EMP001")
-                .name("Tushar Revamped")
-                .references(List.of("Smart", "Handsome"))
-                .build();
+        final var meUpdated = IdWithRefs.of(UserData.builder().id("EMP001").name("Tushar Revamped").build(),
+                                            List.of("Smart", "Handsome"));
 
-        final var you = UserDataWithReferences.builder()
-                .id("EMP002")
-                .name("Pickle Rick")
-                .references(List.of("Cucumber", "Ugly"))
-                .build();
+        final var you = IdWithRefs.of(UserData.builder().id("EMP002").name("Pickle Rick").build(),
+                                      List.of("Cucumber", "Ugly"));
 
-        TestUtils.testStoreOperations(store,
-                                      () -> me,
-                                      () -> meUpdated,
-                                      () -> you,
-                                      () -> UserDataWithReferences.builder().id("unknown").build(),
-                                      AerospikeStoreTest::checkIfMatches);
+        TestUtils.assertStoreOperations(store,
+                                        () -> me,
+                                        () -> meUpdated,
+                                        () -> you,
+                                        () -> IdWithRefs.of(UserData.builder().id("unknown").build()),
+                                        AerospikeStoreTest::assertIfValid);
         var result = store.getByRefId("Smart");
-        checkIfMatches(meUpdated, result.stream().findFirst());
+        assertIfValid(meUpdated.item(), result.stream().findFirst());
         result = store.getByRefId("Handsome");
-        checkIfMatches(meUpdated, result.stream().findFirst());
+        assertIfValid(meUpdated.item(), result.stream().findFirst());
 
         /* get by unknown ref */
         result = store.getByRefId("random");
         assertTrue(result.isEmpty());
 
         /* test if multiple records match */
-        store.create(UserDataWithReferences.builder()
-                             .id("EMP003")
-                             .name("Morty")
-                             .references(List.of("Stupid", "Smart"))
-                             .build());
+        store.create(UserData.builder().id("EMP003").name("Morty").build(),
+                                   List.of("Stupid", "Smart"));
         result = store.getByRefId("Smart");
         assertEquals(2, result.size());
         assertTrue(result.stream().anyMatch(data -> data.id().equals("EMP001")));
         assertTrue(result.stream().anyMatch(data -> data.id().equals("EMP003")));
 
         /* test if multiple records match */
-        store.create(UserDataWithReferences.builder()
-                             .id("EMP004")
-                             .name("Summer")
-                             .references(List.of("Stupid", "Smart", "Smart"))
-                             .build());
+        store.create(UserData.builder().id("EMP004").name("Summer").build(), List.of("Stupid", "Smart", "Smart"));
         result = store.getByRefId("Smart");
         assertEquals(3, result.size());
         assertTrue(result.stream().anyMatch(data -> data.id().equals("EMP001")));
         assertTrue(result.stream().anyMatch(data -> data.id().equals("EMP003")));
         assertTrue(result.stream().anyMatch(data -> data.id().equals("EMP004")));
     }
-
-    private static boolean checkIfMatches(final UserDataWithReferences data, final Optional<UserDataWithReferences> result) {
-        assertTrue(result.isPresent());
-        assertEquals(data.id(), result.get().id());
-        assertEquals(data.name(), result.get().name());
-        assertEquals(data.references(), result.get().references());
-        return true;
-    }
-
 
     @Test
     void testStoreOperationsOnReplace() {
@@ -213,33 +184,33 @@ class AerospikeStoreTest {
                                                 new ObjectMapper(),
                                                 new DefaultErrorHandler<>());
         /* put some data */
-        final var me = DataUtils.generateTestData("11");
+        final var me = DataUtils.generateTestData("11").item();
         storeWithReplace.create(me);
 
         /* get it back */
         Optional<UserData> testData = storeWithReplace.get(me.id());
-        validateTestData(testData, me);
+        assertIfValid(me, testData);
 
         /* get on unknown id */
         assertFalse(storeWithReplace.get("unknown").isPresent());
 
         /* create same data */
         final var meAgain = DataUtils.generateTestData("11");
-        storeWithReplace.create(meAgain);
-        testData = storeWithReplace.get(meAgain.id());
-        validateTestData(testData, meAgain);
+        storeWithReplace.create(meAgain.item());
+        testData = storeWithReplace.get(meAgain.item().id());
+        assertIfValid(meAgain.item(), testData);
     }
 
     @Test
     void testStoreDeleteExistingKeySuccessful() {
 
         /* put some data */
-        final var me = DataUtils.generateTestData("12");
+        final var me = DataUtils.generateTestData("12").item();
         store.create(me);
 
         /* get it back */
         Optional<UserData> testData = store.get(me.id());
-        validateTestData(testData, me);
+        assertIfValid(me, testData);
 
         /* delete it */
         store.delete(me.id());
@@ -260,7 +231,7 @@ class AerospikeStoreTest {
                 = new UserAerospikeStore(aerospikeClient,
                                          new NamespaceSet("test", "json-error-1"),
                                          mapper, errorHandler);
-        newStore.create(DataUtils.generateTestData());
+        newStore.create(DataUtils.generateTestData().item());
         Mockito.verify(errorHandler, Mockito.times(1)).onSerializationError(any(), any());
 
     }
@@ -271,7 +242,7 @@ class AerospikeStoreTest {
         final ObjectMapper mapper = mock(ObjectMapper.class);
         final ErrorHandler<UserData> errorHandler = mock(ErrorHandler.class);
         when(mapper.readValue(anyString(), any(TypeReference.class))).thenThrow(JsonProcessingException.class);
-        final var testData = DataUtils.generateTestData("31");
+        final var testData = DataUtils.generateTestData("31").item();
         when(mapper.writeValueAsString(any())).thenReturn(validObjectMapper.writeValueAsString(testData));
         final UserAerospikeStore newStore
                 = new UserAerospikeStore(aerospikeClient,
@@ -282,7 +253,7 @@ class AerospikeStoreTest {
         assertFalse(result.isPresent());
         Mockito.verify(errorHandler, Mockito.times(1)).onDeSerializationError(any(), any());
 
-        final var anotherTestData = DataUtils.generateTestData("32");
+        final var anotherTestData = DataUtils.generateTestData("32").item();
         newStore.create(anotherTestData);
         final Map<String, UserData> result2 = newStore.get(List.of(testData.id(), anotherTestData.id()));
         assertTrue(result2.isEmpty());
@@ -297,12 +268,12 @@ class AerospikeStoreTest {
                                          new NamespaceSet("test", "no-record-error-2"),
                                          new ObjectMapper(), errorHandler);
 
-        final var testData = DataUtils.generateTestData();
+        final var testData = DataUtils.generateTestData().item();
         final Optional<UserData> result = newStore.get(testData.id());
         assertFalse(result.isPresent());
         Mockito.verify(errorHandler, Mockito.times(1)).onNoRecordFound(any());
 
-        final var anotherTestData = DataUtils.generateTestData("2");
+        final var anotherTestData = DataUtils.generateTestData("2").item();
         final Map<String, UserData> result2 = newStore.get(List.of(testData.id(), anotherTestData.id()));
         assertTrue(result2.isEmpty());
         Mockito.verify(errorHandler, Mockito.times(3)).onNoRecordFound(any());
@@ -322,7 +293,7 @@ class AerospikeStoreTest {
                                          new ObjectMapper(), errorHandler);
 
         final var testData = DataUtils.generateTestData("77");
-        newStore.create(testData);
+        newStore.create(testData.item());
         Mockito.verify(errorHandler, Mockito.times(1)).onAerospikeError(any(), any());
     }
 }

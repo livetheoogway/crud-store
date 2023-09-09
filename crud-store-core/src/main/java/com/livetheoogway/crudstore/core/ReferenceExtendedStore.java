@@ -15,8 +15,28 @@
 package com.livetheoogway.crudstore.core;
 
 import java.util.List;
-import java.util.Optional;
 
-public interface Id {
-    String id();
+/**
+ * Extension of Store interface to support reference based queries
+ * This may be used for data stores that support indexing
+ *
+ * @param <T> type of item being stored, must implement the Id interface
+ * @since 1.2.5
+ */
+public interface ReferenceExtendedStore<T extends Id> extends Store<T> {
+    /**
+     * Create a new item
+     *
+     * @param item   item to be created
+     * @param refIds reference ids to be indexed
+     */
+    void create(final T item, final List<String> refIds);
+
+    /**
+     * Get items by reference id
+     *
+     * @param refId reference id
+     * @return list of items
+     */
+    List<T> getByRefId(final String refId);
 }
