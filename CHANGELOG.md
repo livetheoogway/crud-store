@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.5](https://github.com/livetheoogway/crud-store/tree/1.2.5) (2023-09-09)
+
+[Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.2.4...1.2.5)
+
+**Implemented enhancements:**
+
+- Create optional support for reference Ids in the store [\#19](https://github.com/livetheoogway/crud-store/issues/19)
+- Issue 19 [\#20](https://github.com/livetheoogway/crud-store/pull/20) ([Tushar-Naik](https://github.com/Tushar-Naik))
+
+**Merged pull requests:**
+
+- Clean up of the references implementation [\#21](https://github.com/livetheoogway/crud-store/pull/21) ([Tushar-Naik](https://github.com/Tushar-Naik))
+
 ## [1.2.4](https://github.com/livetheoogway/crud-store/tree/1.2.4) (2023-08-28)
 
 [Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.2.3...1.2.4)
