@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.6](https://github.com/livetheoogway/crud-store/tree/1.2.6) (2023-09-10)
+
+[Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.2.5...1.2.6)
+
+**Merged pull requests:**
+
+- Clean up of record extraction and creation Error handler is more comp… [\#22](https://github.com/livetheoogway/crud-store/pull/22) ([Tushar-Naik](https://github.com/Tushar-Naik))
+
 ## [1.2.5](https://github.com/livetheoogway/crud-store/tree/1.2.5) (2023-09-09)
 
 [Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.2.4...1.2.5)
