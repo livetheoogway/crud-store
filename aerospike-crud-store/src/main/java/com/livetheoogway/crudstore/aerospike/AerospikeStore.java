@@ -140,12 +140,12 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
      */
     @Override
     public void create(final T item) {
-        write(item, null, createPolicy);
+        write(item.id(), () -> recordDetails(item, null), createPolicy);
     }
 
     @Override
     public void create(final T item, List<String> refIds) {
-        write(item, refIds, createPolicy);
+        write(item.id(), () -> recordDetails(item, refIds), createPolicy);
     }
 
     /**
@@ -155,7 +155,7 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
      */
     @Override
     public void update(final T item) {
-        write(item, null, updateOnly);
+        write(item.id(), () -> recordDetails(item, null), updateOnly);
     }
 
 
@@ -178,15 +178,11 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
      */
     @Override
     public Optional<T> get(final String id) {
-        final T data = exec("get", id, () -> {
+        return exec("get", id, () -> {
             final var requestIdKey = new Key(namespaceSet.namespace(), namespaceSet.set(), id);
             final var asRecord = client.get(client.getReadPolicyDefault(), requestIdKey);
-            return extractItem(id, asRecord);
+            return extractItemFromRecord(id, asRecord);
         }, errorHandler);
-        if (isValidDataItem(data)) {
-            return Optional.ofNullable(data);
-        }
-        return Optional.empty();
     }
 
     /**
@@ -205,7 +201,7 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
         final Record[] records = client.get(client.getBatchPolicyDefault(), batchReads);
         return IntStream
                 .range(0, ids.size())
-                .mapToObj(index -> extractItemForBulkOperations(batchReads[index].userKey.toString(), records[index]))
+                .mapToObj(index -> extractItemFromRecord(batchReads[index].userKey.toString(), records[index]))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .filter(this::isValidDataItem)
@@ -226,7 +222,7 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
                 client.getScanPolicyDefault(),
                 namespaceSet.namespace(), namespaceSet.set(),
                 (key, asRecord) ->
-                        extractItemForBulkOperations(key.userKey.toString(), asRecord)
+                        extractItemFromRecord(key.userKey.toString(), asRecord)
                                 .ifPresent(items::add));
         return items;
     }
@@ -237,16 +233,13 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
         statement.setNamespace(namespaceSet.namespace());
         statement.setSetName(namespaceSet.set());
         statement.setIndexName(storeSetting.refIdIndex());
+        statement.setBinNames(storeSetting.dataBin());
         statement.setFilter(Filter.contains(storeSetting.refIdBin(), IndexCollectionType.LIST, refId));
         final List<T> results = new ArrayList<>();
         try (final RecordSet recordSet = client.query(client.getQueryPolicyDefault(), statement)) {
             while (recordSet.next()) {
-                final T t = extractItem(recordSet.getKey().userKey.toString(), recordSet.getRecord());
-                if (isValidDataItem(t)) {
-                    results.add(t);
-                } else {
-                    log.warn("Invalid item found for id:{}", t.id());
-                }
+                extractItemFromRecord(recordSet.getKey().userKey.toString(), recordSet.getRecord())
+                        .ifPresent(results::add);
             }
         } catch (AerospikeException e) {
             log.error("[{}] Aerospike Error {} item for id:{}", typeReference.getType().getTypeName(), "getByRefId", refId, e);
@@ -255,37 +248,33 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
         return results;
     }
 
-    public T extractItem(String id, Record asRecord) {
+    /**
+     * given an Aerospike Record, extract the data out of it
+     * @param id       key
+     * @param asRecord how the record is extracted
+     * @return optionally return data if available
+     */
+    protected Optional<T> extractItemFromRecord(final String id, final Record asRecord) {
         if (asRecord == null) {
             return errorHandler.onNoRecordFound(id);
         }
         final var data = asRecord.getString(storeSetting.dataBin());
         try {
-            return mapper.readValue(data, typeReference);
+            final T value = mapper.readValue(data, typeReference);
+            if (isValidDataItem(value)) {
+                return Optional.of(value);
+            }
+            log.warn("Invalid item found for id:{}", id);
+            return Optional.empty();
         } catch (JsonProcessingException e) {
-            log.error("[{}] Deserialization error id:{} record:{}", typeReference.getType().getTypeName(), id, asRecord,
-                      e);
+            log.error("[{}] Deserialization error id:{} record:{}", typeReference.getType().getTypeName(), id, asRecord, e);
             return errorHandler.onDeSerializationError(id, e);
         }
     }
 
-    public Optional<T> extractItemForBulkOperations(String id, Record asRecord) {
-        if (asRecord == null) {
-            return Optional.ofNullable(errorHandler.onNoRecordFound(id));
-        }
-        final var data = asRecord.getString(storeSetting.dataBin());
-        try {
-            return Optional.of(mapper.readValue(data, typeReference));
-        } catch (JsonProcessingException e) {
-            log.error("[{}] Deserialization error id:{} record:{}", typeReference.getType().getTypeName(), id, asRecord,
-                      e);
-            return Optional.ofNullable(errorHandler.onDeSerializationError(id, e));
-        }
-    }
-
-    protected RecordDetails recordDetails(T item, List<String> refIds) throws JsonProcessingException {
+    protected RecordDetails recordDetails(final T item, final List<String> refIds) throws JsonProcessingException {
         final var dataBin = new Bin(storeSetting.dataBin(), mapper.writeValueAsString(item));
-        if (refIds!=null && !refIds.isEmpty()) {
+        if (refIds != null && !refIds.isEmpty()) {
             final var refIdBin = new Bin(storeSetting.refIdBin(), refIds);
             return new RecordDetails(expiration(item), dataBin, refIdBin);
         }
@@ -301,7 +290,10 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
      * @param <R>       result type
      * @return result
      */
-    protected <R> R exec(final String operation, final String id, ESupplier<R> response, ErrorHandler<R> errorHandler) {
+    protected <R> Optional<R> exec(final String operation,
+                                   final String id,
+                                   final ESupplier<Optional<R>> response,
+                                   final ErrorHandler<R> errorHandler) {
         try {
             log.info("[{}] {} item for id:{}", typeReference.getType().getTypeName(), operation, id);
             return response.get();
@@ -317,10 +309,11 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
         }
     }
 
-    private void write(final T item, List<String> refIds,  WritePolicy defaultWritePolicy) {
-        final var id = item.id();
+    protected void write(final String id,
+                         final ESupplier<RecordDetails> recordDetailsSupplier,
+                         final WritePolicy defaultWritePolicy) {
         exec("operation:" + defaultWritePolicy.recordExistsAction, id, () -> {
-            final var recordDetails = recordDetails(item, refIds);
+            final var recordDetails = recordDetailsSupplier.get();
             var writePolicy = defaultWritePolicy;
             if (recordDetails.expiration() > 0) {
                 writePolicy = new WritePolicy(writePolicy);
