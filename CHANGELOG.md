@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.7](https://github.com/livetheoogway/crud-store/tree/1.2.7) (2023-09-20)
+
+[Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.2.6...1.2.7)
+
+**Merged pull requests:**
+
+- Issue 19 [\#24](https://github.com/livetheoogway/crud-store/pull/24) ([Tushar-Naik](https://github.com/Tushar-Naik))
+- Fix on the error code while creating indexes [\#23](https://github.com/livetheoogway/crud-store/pull/23) ([Tushar-Naik](https://github.com/Tushar-Naik))
+
 ## [1.2.6](https://github.com/livetheoogway/crud-store/tree/1.2.6) (2023-09-10)
 
 [Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.2.5...1.2.6)
