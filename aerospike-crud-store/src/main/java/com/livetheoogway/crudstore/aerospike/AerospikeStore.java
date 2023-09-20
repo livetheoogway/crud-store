@@ -337,7 +337,7 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
                 log.info("Created index: {}", storeSetting.refIdIndex());
             }
         } catch (AerospikeException e) {
-            if (e.getResultCode() == 100) {
+            if (e.getResultCode() == 100 || e.getResultCode() == 200) {
                 log.info("Index already exists:{}", storeSetting.refIdIndex());
                 return;
             }
