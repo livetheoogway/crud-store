@@ -27,7 +27,7 @@ import java.util.Optional;
  * A delegating wrapper on Store that caches data for some duration
  * It uses caffine underneath
  *
- * @param <T> type of Id
+ * @param <T> type of item being stored, must implement the Id interface
  */
 @AllArgsConstructor
 public class CachingStore<T extends Id> implements Store<T> {

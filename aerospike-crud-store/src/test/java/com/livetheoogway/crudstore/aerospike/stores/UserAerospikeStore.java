@@ -12,23 +12,26 @@
  * under the License.
  */
 
-package com.livetheoogway.crudstore.aerospike;
+package com.livetheoogway.crudstore.aerospike.stores;
 
 import com.aerospike.client.IAerospikeClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.livetheoogway.crudstore.aerospike.AerospikeStore;
+import com.livetheoogway.crudstore.aerospike.ErrorHandler;
+import com.livetheoogway.crudstore.aerospike.NamespaceSet;
+import com.livetheoogway.crudstore.aerospike.data.UserData;
 
-public class TestAerospikeStore extends AerospikeStore<TestData> {
+public class UserAerospikeStore extends AerospikeStore<UserData> {
 
-    protected TestAerospikeStore(final IAerospikeClient client,
+    public UserAerospikeStore(final IAerospikeClient client,
                                  final NamespaceSet namespaceSet,
                                  final ObjectMapper mapper,
-                                 final Class<TestData> clazz,
-                                 final ErrorHandler<TestData> errorHandler) {
-        super(client, namespaceSet, mapper, clazz, errorHandler);
+                                 final ErrorHandler<UserData> errorHandler) {
+        super(client, namespaceSet, mapper, UserData.class, errorHandler);
     }
 
     @Override
-    public boolean isValidDataItem(final TestData testData) {
+    public boolean isValidDataItem(final UserData userData) {
         return true;
     }
 }

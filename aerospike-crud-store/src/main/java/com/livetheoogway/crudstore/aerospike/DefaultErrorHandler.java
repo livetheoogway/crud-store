@@ -26,37 +26,27 @@ public class DefaultErrorHandler<T> implements ErrorHandler<T> {
     }
 
     @Override
-    public T onNoRecordFound(final String id) {
-        return null;
+    public Optional<T> onNoRecordFound(final String id) {
+        return Optional.empty();
     }
 
     @Override
-    public T onDeSerializationError(final String id, final JsonProcessingException e) {
+    public Optional<T> onDeSerializationError(final String id, final JsonProcessingException e) {
         throw new RuntimeException(id + " not deserializable", e);
     }
 
     @Override
-    public T onAerospikeError(final String id, final AerospikeException e) {
+    public Optional<T> onAerospikeError(final String id, final AerospikeException e) {
         throw new RuntimeException(e);
     }
 
     @Override
-    public T onSerializationError(final String id, final JsonProcessingException e) {
+    public Optional<T> onSerializationError(final String id, final JsonProcessingException e) {
         throw new RuntimeException(id + " not serializable", e);
     }
 
     @Override
-    public Optional<T> onNoRecordFoundForBulkGet(final String id) {
-        return Optional.empty();
-    }
-
-    @Override
-    public Optional<T> onDeSerializationErrorDuringBulkGet(final String id, final JsonProcessingException e) {
-        return Optional.empty();
-    }
-
-    @Override
-    public T onExecutionError(final String id, final Exception e) {
+    public Optional<T> onExecutionError(final String id, final Exception e) {
         throw new RuntimeException(e);
     }
 }

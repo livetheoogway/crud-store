@@ -20,10 +20,13 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static com.livetheoogway.crudstore.core.TestUtils.assertIfValid;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CachingStoreTest {
 
@@ -33,31 +36,25 @@ class CachingStoreTest {
         Store<TestData> store = new CachingStore<>(new InMemoryStore<>(), 5, 2, 1);
 
         /* put some data */
-        store.create(new TestData("1", "me", 2));
+        final var expected = new TestData("1", "me", 2);
+        store.create(expected);
 
         /* get it back */
-        Optional<TestData> testData = store.get("1");
-        assertTrue(testData.isPresent());
-        assertEquals("1", testData.get().id());
-        assertEquals("me", testData.get().name());
-        assertEquals(2, testData.get().age());
+        assertIfValid(expected, store.get("1"));
 
         /* get on unknown id */
         assertFalse(store.get("unknown").isPresent());
 
         /* update existing data */
-        store.update(new TestData("1", "me too", 5));
-        testData = store.get("1");
-        assertTrue(testData.isPresent());
-        assertEquals("1", testData.get().id());
-        assertEquals("me", testData.get().name());
-        assertEquals(2, testData.get().age());
+        final var updated = new TestData("1", "me too", 5);
+        store.update(updated);
+        assertIfValid(expected, store.get("1")); // should be old data as its cached
 
         /* update unknown id */
         assertThrows(RuntimeException.class, () -> store.update(new TestData("unknown", "me too", 5)));
 
         /* create already existing id */
-        assertThrows(RuntimeException.class, () -> store.create(new TestData("1", "me too", 5)));
+        assertThrows(RuntimeException.class, () -> store.create(updated));
 
         /* get bulk */
         store.create(new TestData("2", "you", 5));
@@ -77,12 +74,12 @@ class CachingStoreTest {
         Store<TestData> store = new CachingStore<>(new InMemoryStore<>(), 5, 2, 1);
 
         /* after 1s, refresh after write should kick in */
-        store.create(new TestData("3", "you", 5));
-        Optional<TestData> testData = store.get("3");
-        assertTrue(testData.isPresent());
-        assertEquals("3", testData.get().id());
-        assertEquals("you", testData.get().name());
-        store.update(new TestData("3", "you too", 7));
+        final var expected = new TestData("3", "you", 5);
+        store.create(expected);
+        assertIfValid(expected, store.get("3"));
+
+        final var updated = new TestData("3", "you too", 7);
+        store.update(updated);
         Awaitility
                 .await()
                 .atMost(2, TimeUnit.SECONDS)
@@ -95,22 +92,17 @@ class CachingStoreTest {
                 .until(() -> "you too".equals(store.get("3").get().name()));
 
         /* after 2s, refresh after write should kick in */
-        store.create(new TestData("4", "four", 5));
-        testData = store.get("4");
-        assertTrue(testData.isPresent());
-        assertEquals("4", testData.get().id());
-        assertEquals("four", testData.get().name());
-        store.update(new TestData("4", "four too", 7));
+        final var four = new TestData("4", "four", 5);
+        store.create(four);
+        assertIfValid(four, store.get("4"));
+        final var fourToo = new TestData("4", "four too", 7);
+        store.update(fourToo);
         Awaitility
                 .await()
                 .atMost(5, TimeUnit.SECONDS)
                 .pollDelay(2000, TimeUnit.MILLISECONDS)
                 .pollInterval(100, TimeUnit.MILLISECONDS)
                 .until(() -> "four too".equals(store.get("4").get().name()));
-        testData = store.get("4");
-        assertTrue(testData.isPresent());
-        assertEquals("4", testData.get().id());
-        assertEquals("four too", testData.get().name());
-        assertEquals(7, testData.get().age());
+        assertIfValid(fourToo, store.get("4"));
     }
 }

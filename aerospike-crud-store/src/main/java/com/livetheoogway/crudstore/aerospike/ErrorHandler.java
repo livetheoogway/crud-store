@@ -17,23 +17,24 @@ package com.livetheoogway.crudstore.aerospike;
 import com.aerospike.client.AerospikeException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 
+import java.util.List;
 import java.util.Optional;
 
 @SuppressWarnings("java:S112")
 public interface ErrorHandler<T> {
     void onDeleteUnsuccessful();
 
-    T onNoRecordFound(String id);
+    Optional<T> onNoRecordFound(String id);
 
-    T onDeSerializationError(String id, final JsonProcessingException e);
+    Optional<T> onDeSerializationError(String id, final JsonProcessingException e);
 
-    T onAerospikeError(String id, AerospikeException e);
+    Optional<T> onAerospikeError(String id, AerospikeException e);
 
-    T onSerializationError(final String id, JsonProcessingException e);
+    default List<T> onAerospikeErrorForRefId(String id, AerospikeException e) {
+        return List.of();
+    }
 
-    Optional<T> onNoRecordFoundForBulkGet(String id);
+    Optional<T> onSerializationError(final String id, JsonProcessingException e);
 
-    Optional<T> onDeSerializationErrorDuringBulkGet(String id, JsonProcessingException e);
-
-    T onExecutionError(final String id, Exception e);
+    Optional<T> onExecutionError(final String id, Exception e);
 }

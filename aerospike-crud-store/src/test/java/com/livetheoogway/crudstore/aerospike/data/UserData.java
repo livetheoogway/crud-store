@@ -12,13 +12,14 @@
  * under the License.
  */
 
-package com.livetheoogway.crudstore.aerospike;
+package com.livetheoogway.crudstore.aerospike.data;
 
 import com.livetheoogway.crudstore.core.Id;
+import lombok.Builder;
 
-public record TestData(String id, String name, int age) implements Id {
-    @Override
-    public String id() {
-        return id;
-    }
+@Builder
+public record UserData(
+        String id,
+        String name,
+        int age) implements Id {
 }

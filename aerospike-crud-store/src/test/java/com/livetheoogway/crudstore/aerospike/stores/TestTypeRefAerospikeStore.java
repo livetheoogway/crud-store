@@ -12,18 +12,23 @@
  * under the License.
  */
 
-package com.livetheoogway.crudstore.aerospike;
+package com.livetheoogway.crudstore.aerospike.stores;
 
 import com.aerospike.client.IAerospikeClient;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.livetheoogway.crudstore.aerospike.AerospikeStore;
+import com.livetheoogway.crudstore.aerospike.ErrorHandler;
+import com.livetheoogway.crudstore.aerospike.NamespaceSet;
+import com.livetheoogway.crudstore.core.Id;
 
-public class TestAerospikeStoreReplace extends AerospikeStore<TestData> {
+public class TestTypeRefAerospikeStore<T extends Id> extends AerospikeStore<T> {
 
-    protected TestAerospikeStoreReplace(final IAerospikeClient client,
+    public TestTypeRefAerospikeStore(final IAerospikeClient client,
                                         final NamespaceSet namespaceSet,
                                         final ObjectMapper mapper,
-                                        final Class<TestData> clazz,
-                                        final ErrorHandler<TestData> errorHandler) {
-        super(client, namespaceSet, mapper, clazz, errorHandler, false);
+                                        final TypeReference<T> typeReference,
+                                        final ErrorHandler<T> errorHandler) {
+        super(client, namespaceSet, mapper, typeReference, errorHandler);
     }
 }
