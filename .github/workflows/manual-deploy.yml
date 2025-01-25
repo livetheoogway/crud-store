@@ -15,26 +15,12 @@ jobs:
         run: |
           echo "${{ secrets.MAVEN_GPG_PRIVATE_KEY }}" | base64 -d | gpg --batch --import
 
-      - name: "🔑 Debug GPG Import"
-        run: |
-          mkdir -p ~/.gnupg
-          echo "Checking if GPG is available..."
-          gpg --version
-          echo "Listing existing GPG keys..."
-          gpg --list-secret-keys --keyid-format LONG || echo "No keys found."
-          echo "Decoding and importing GPG key..."
-          echo "${{ secrets.MAVEN_GPG_PRIVATE_KEY }}" | base64 -d | gpg --batch --import || echo "GPG import failed"
-          echo "Listing keys after import..."
-          gpg --list-secret-keys --keyid-format LONG || echo "No keys found after import."
-
       - name: "☕ Set up java"
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: '17'
           cache: maven
-          gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
-          gpg-passphrase: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
 
       - name: "🔧 Compile"
         run: mvn compile
@@ -68,8 +54,6 @@ jobs:
           server-id: ossrh
           server-username: ${{ secrets.OSSRH_USERNAME }}
           server-password: ${{ secrets.OSSRH_TOKEN }}
-          gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
-          gpg-passphrase: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
 
       - name: "🗽 Publish package"
         run: mvn clean deploy -DskipTests -Prelease -X
