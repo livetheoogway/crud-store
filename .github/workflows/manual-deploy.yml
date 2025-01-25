@@ -11,6 +11,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: "🔑 Import GPG Key"
+        run: |
+          echo "${{ secrets.MAVEN_GPG_PRIVATE_KEY }}" | base64 -d | gpg --batch --import
+
       - name: "☕ Set up java"
         uses: actions/setup-java@v3
         with:
@@ -38,6 +42,10 @@ jobs:
           mkdir -p "$HOME/.m2"
           ls -la "$HOME/.m2"
           echo "<settingsSecurity><master>${{ secrets.MAVEN_MASTER_PASSWORD }}</master></settingsSecurity>" > "$HOME/.m2/settings-security.xml"
+
+      - name: "🔑 Import GPG Key"
+        run: |
+          echo "${{ secrets.MAVEN_GPG_PRIVATE_KEY }}" | base64 -d | gpg --batch --import
 
       - name: "☕ Set up java"
         uses: actions/setup-java@v3
