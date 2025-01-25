@@ -30,10 +30,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: "debug"
-        run: |
-          cat $HOME/.m2/settings.xml
-
       - name: "☕ Set up java"
         uses: actions/setup-java@v3
         with:
