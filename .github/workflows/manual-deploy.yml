@@ -63,7 +63,11 @@ jobs:
           server-password: ${{ secrets.OSSRH_TOKEN }}
 
       - name: "🗽 Publish package"
-        run: mvn clean deploy -DskipTests -Prelease
+        run: |
+          mvn clean deploy -DskipTests -Prelease \
+            -Dgpg.executable=gpg \
+            -Dgpg.passphrase="${{ secrets.MAVEN_GPG_PASSPHRASE }}" \
+            -DgpgArguments="--pinentry-mode loopback"
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
