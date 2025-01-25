@@ -30,13 +30,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: "🔑 Create settings-security.xml"
-        run: |
-          echo $HOME 
-          mkdir -p "$HOME/.m2"
-          ls -la "$HOME/.m2"
-          echo "<settingsSecurity><master>${{ secrets.MAVEN_MASTER_PASSWORD }}</master></settingsSecurity>" > "$HOME/.m2/settings-security.xml"
-
       - name: "🔑 Import GPG Key"
         run: |
           echo "${{ secrets.MAVEN_GPG_PRIVATE_KEY }}" | base64 -d | gpg --batch --import
@@ -55,11 +48,11 @@ jobs:
           java-version: '17'
           cache: maven
           server-id: ossrh
-          server-username: ${{ secrets.OSSRH_USERNAME }}
-          server-password: ${{ secrets.OSSRH_TOKEN }}
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
 
       - name: "🗽 Publish package"
-        run: mvn clean deploy -DskipTests -Prelease
+        run: mvn clean deploy -DskipTests -Prelease -Dgpg.passphrase=${{ secrets.MAVEN_GPG_PASSPHRASE }}
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
