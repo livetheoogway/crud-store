@@ -34,7 +34,10 @@ jobs:
 
       - name: "🔑 Create settings-security.xml"
         run: |
-            echo "${{ secrets.SETTINGS_SECURITY_XML }}" > $HOME/.m2/settings-security.xml
+          echo $HOME 
+          mkdir -p "$HOME/.m2"
+          ls -la "$HOME/.m2"
+          echo "${{ secrets.SETTINGS_SECURITY_XML }}" > $HOME/.m2/settings-security.xml
 
       - name: "☕ Set up java"
         uses: actions/setup-java@v3
