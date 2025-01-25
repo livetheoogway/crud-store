@@ -30,6 +30,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: "debug"
+        run: |
+          cat $HOME/.m2/settings.xml
+
       - name: "☕ Set up java"
         uses: actions/setup-java@v3
         with:
@@ -37,10 +41,8 @@ jobs:
           java-version: '17'
           cache: maven
           server-id: ossrh
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_PASSWORD
-          gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
-          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+          server-username: ${{ secrets.OSSRH_USERNAME }}
+          server-password: ${{ secrets.OSSRH_TOKEN }}
 
       - name: "🗽 Publish package"
         run: mvn clean deploy -DskipTests -Prelease
