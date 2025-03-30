@@ -176,6 +176,24 @@ class AerospikeStoreTest {
     }
 
     @Test
+    void testStoreOperationsForWhenReferencesAreTurnedOff() {
+
+        final TestTypeRefAerospikeStore<UserData> store
+                = new TestTypeRefAerospikeStore<>(aerospikeClient,
+                                                  new NamespaceSet("test", "test-4"),
+                                                  new ObjectMapper(),
+                                                  new TypeReference<>() {},
+                                                  new DefaultErrorHandler<>(),
+                                                  AerospikeStoreSetting.builder()
+                                                          .refIdSetting(RefIdSetting.builder().disabled(true).build())
+                                                          .build());
+
+        assertThrows(
+                RuntimeException.class,
+                ()->store.create(UserData.builder().id("EMP001").name("Tushar").build(), List.of("Smart", "Handsome")));
+    }
+
+    @Test
     void testStoreOperationsOnReplace() {
 
         final UserAerospikeReplaceStore storeWithReplace
