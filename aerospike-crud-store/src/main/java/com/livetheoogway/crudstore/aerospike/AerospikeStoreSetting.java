@@ -6,6 +6,5 @@ import lombok.Builder;
 public record AerospikeStoreSetting(
         boolean failOnCreateIfRecordExists,
         String dataBin,
-        String refIdBin,
-        String refIdIndex) {
+        RefIdSetting refIdSetting) {
 }

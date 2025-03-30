@@ -145,6 +145,9 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
 
     @Override
     public void create(final T item, List<String> refIds) {
+        if (storeSetting.refIdSetting().disabled()) {
+            log.warn("ReferenceId based lookup is disabled for the set:{} in the storeSetting. Ensure that it is enabled", namespaceSet.set());
+        }
         write(item.id(), () -> recordDetails(item, refIds), createPolicy);
     }
 
@@ -229,12 +232,16 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
 
     @Override
     public List<T> getByRefId(final String refId) {
+        if (storeSetting.refIdSetting().disabled()) {
+            log.error("ReferenceId based lookup is disabled for the set:{} in the storeSetting. Ensure that it is enabled", namespaceSet.set());
+            return errorHandler.onRefIdLookupFailure(refId);
+        }
         final var statement = new Statement();
         statement.setNamespace(namespaceSet.namespace());
         statement.setSetName(namespaceSet.set());
-        statement.setIndexName(storeSetting.refIdIndex());
+        statement.setIndexName(storeSetting.refIdSetting().refIdIndex());
         statement.setBinNames(storeSetting.dataBin());
-        statement.setFilter(Filter.contains(storeSetting.refIdBin(), IndexCollectionType.LIST, refId));
+        statement.setFilter(Filter.contains(storeSetting.refIdSetting().refIdBin(), IndexCollectionType.LIST, refId));
         final List<T> results = new ArrayList<>();
         try (final RecordSet recordSet = client.query(client.getQueryPolicyDefault(), statement)) {
             while (recordSet.next()) {
@@ -274,8 +281,8 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
 
     protected RecordDetails recordDetails(final T item, final List<String> refIds) throws JsonProcessingException {
         final var dataBin = new Bin(storeSetting.dataBin(), mapper.writeValueAsString(item));
-        if (refIds != null && !refIds.isEmpty()) {
-            final var refIdBin = new Bin(storeSetting.refIdBin(), refIds);
+        if (refIds != null && !refIds.isEmpty() && !storeSetting.refIdSetting().disabled()) {
+            final var refIdBin = new Bin(storeSetting.refIdSetting().refIdBin(), refIds);
             return new RecordDetails(expiration(item), dataBin, refIdBin);
         }
         return new RecordDetails(expiration(item), dataBin);
@@ -326,22 +333,26 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
     }
 
     private void setupIndexes() {
+        if (storeSetting.refIdSetting().disabled()) {
+            log.debug("ReferenceId based lookup is disabled for the set:{} in the storeSetting", namespaceSet.set());
+            return;
+        }
         try {
             final var refIdIndexTask = client
                     .createIndex(null, namespaceSet.namespace(), namespaceSet.set(),
-                                 storeSetting.refIdIndex(), storeSetting.refIdBin(),
+                                 storeSetting.refIdSetting().refIdIndex(), storeSetting.refIdSetting().refIdBin(),
                                  IndexType.STRING,
                                  IndexCollectionType.LIST);
             if (refIdIndexTask != null) {
                 refIdIndexTask.waitTillComplete();
-                log.info("Created index: {}", storeSetting.refIdIndex());
+                log.info("Created index: {}", storeSetting.refIdSetting().refIdIndex());
             }
         } catch (AerospikeException e) {
             if (e.getResultCode() == 100 || e.getResultCode() == 200) {
-                log.info("Index already exists:{}", storeSetting.refIdIndex());
+                log.info("Index already exists:{}", storeSetting.refIdSetting().refIdIndex());
                 return;
             }
-            log.error("Error while creating index:{}", storeSetting.refIdIndex(), e);
+            log.error("Error while creating index:{}", storeSetting.refIdSetting().refIdIndex(), e);
             throw e;
         }
     }
@@ -349,18 +360,21 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
     private AerospikeStoreSetting defaultIfNull(final AerospikeStoreSetting storeSetting,
                                                 final @NotNull @NotEmpty String set) {
         final var builder = AerospikeStoreSetting.builder();
+        final var defaultRefIdSetting = RefIdSetting.builder()
+                .disabled(false)
+                .refIdBin(DEFAULT_REF_ID_BIN)
+                .refIdIndex(set + DEFAULT_REF_ID_INDEX_SUFFIX)
+                .build();
         if (storeSetting == null) {
             return builder
                     .dataBin(DEFAULT_DATA_BIN)
-                    .refIdBin(DEFAULT_REF_ID_BIN)
+                    .refIdSetting(defaultRefIdSetting)
                     .failOnCreateIfRecordExists(true)
-                    .refIdIndex(set + DEFAULT_REF_ID_INDEX_SUFFIX).build();
+                    .build();
         }
         builder.dataBin(Objects.requireNonNullElse(storeSetting.dataBin(), DEFAULT_DATA_BIN));
-        final var refIdBin = Objects.requireNonNullElse(storeSetting.refIdBin(), DEFAULT_REF_ID_BIN);
-        builder.refIdBin(refIdBin);
-        builder.refIdIndex(Objects.requireNonNullElse(storeSetting.refIdIndex(),
-                                                      set + "_" + refIdBin + DEFAULT_REF_ID_INDEX_SUFFIX));
+        final var refIdBin = Objects.requireNonNullElse(storeSetting.refIdSetting(), defaultRefIdSetting);
+        builder.refIdSetting(refIdBin);
         return builder.build();
     }
 }
