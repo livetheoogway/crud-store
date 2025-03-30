@@ -37,4 +37,6 @@ public interface ErrorHandler<T> {
     Optional<T> onSerializationError(final String id, JsonProcessingException e);
 
     Optional<T> onExecutionError(final String id, Exception e);
+
+    List<T>  onRefIdLookupFailure(final String refId);
 }

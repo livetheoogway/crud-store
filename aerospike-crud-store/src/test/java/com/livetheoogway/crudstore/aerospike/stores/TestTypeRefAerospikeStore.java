@@ -25,10 +25,10 @@ import com.livetheoogway.crudstore.core.Id;
 public class TestTypeRefAerospikeStore<T extends Id> extends AerospikeStore<T> {
 
     public TestTypeRefAerospikeStore(final IAerospikeClient client,
-                                        final NamespaceSet namespaceSet,
-                                        final ObjectMapper mapper,
-                                        final TypeReference<T> typeReference,
-                                        final ErrorHandler<T> errorHandler) {
+                                     final NamespaceSet namespaceSet,
+                                     final ObjectMapper mapper,
+                                     final TypeReference<T> typeReference,
+                                     final ErrorHandler<T> errorHandler) {
         super(client, namespaceSet, mapper, typeReference, errorHandler);
     }
 }

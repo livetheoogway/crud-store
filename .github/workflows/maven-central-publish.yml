@@ -1,6 +1,8 @@
 name: Manual Deployment to Maven Central
 
-on: workflow_dispatch
+on:
+  release:
+    types: [created]
 
 jobs:
   build:
@@ -26,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "👷 Checkout code"
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -42,7 +44,7 @@ jobs:
           gpgconf --reload gpg-agent
 
       - name: "☕ Set up java"
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -119,4 +121,4 @@ jobs:
           CI_USER: github-actions
           CI_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git push "https://$CI_USER:$CI_TOKEN@github.com/$GITHUB_REPOSITORY.git" HEAD:master
+          git push "https://$CI_USER:$CI_TOKEN@github.com/$GITHUB_REPOSITORY.git" HEAD:main
