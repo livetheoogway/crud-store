@@ -180,7 +180,7 @@ class AerospikeStoreTest {
 
         final TestTypeRefAerospikeStore<UserData> store
                 = new TestTypeRefAerospikeStore<>(aerospikeClient,
-                                                  new NamespaceSet("test", "test-4"),
+                                                  new NamespaceSet("test", "test-401"),
                                                   new ObjectMapper(),
                                                   new TypeReference<>() {},
                                                   new DefaultErrorHandler<>(),
