@@ -17,6 +17,7 @@ package com.livetheoogway.crudstore.aerospike;
 import com.aerospike.client.AerospikeException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 
+import java.util.List;
 import java.util.Optional;
 
 public class DefaultErrorHandler<T> implements ErrorHandler<T> {
@@ -48,5 +49,10 @@ public class DefaultErrorHandler<T> implements ErrorHandler<T> {
     @Override
     public Optional<T> onExecutionError(final String id, final Exception e) {
         throw new RuntimeException(e);
+    }
+
+    @Override
+    public List<T> onRefIdLookupFailure(String refId) {
+        throw new RuntimeException("refId lookup failed");
     }
 }
