@@ -145,6 +145,9 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
 
     @Override
     public void create(final T item, List<String> refIds) {
+        if (storeSetting.refIdSetting().disabled()) {
+            log.warn("ReferenceId based lookup is disabled for the set:{} in the storeSetting. Ensure that it is enabled", namespaceSet.set());
+        }
         write(item.id(), () -> recordDetails(item, refIds), createPolicy);
     }
 

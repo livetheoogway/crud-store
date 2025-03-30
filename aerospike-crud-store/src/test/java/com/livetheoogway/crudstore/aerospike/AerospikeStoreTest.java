@@ -188,9 +188,8 @@ class AerospikeStoreTest {
                                                           .refIdSetting(RefIdSetting.builder().disabled(true).build())
                                                           .build());
 
-        assertThrows(
-                RuntimeException.class,
-                ()->store.create(UserData.builder().id("EMP001").name("Tushar").build(), List.of("Smart", "Handsome")));
+        store.create(UserData.builder().id("EMP001").name("Tushar").build(), List.of("Smart", "Handsome"));
+        assertThrows(RuntimeException.class, () -> store.getByRefId("Smart"));
     }
 
     @Test
