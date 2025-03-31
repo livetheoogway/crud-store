@@ -64,8 +64,21 @@ jobs:
           MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
 
-      - name: "🗽Deploy to github packages"
-        run: mvn -X -B deploy -DskipTests -s ${{ github.workspace }}/.github/workflows/settings.xml
+      - name: "Deploy parent POM manually"
+        run: |
+          mvn deploy:deploy-file -DpomFile=pom.xml -Dfile=pom.xml \
+            -DgroupId=com.livetheoogway.crudstore -DartifactId=crud-store -Dversion=1.2.9.5 \
+            -Dpackaging=pom -DrepositoryId=github \
+            -Durl=https://maven.pkg.github.com/livetheoogway/crud-store \
+            -s ${{ github.workspace }}/.github/workflows/settings.xml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+
+      - name: "Deploy modules"
+        run: |
+          mvn -B deploy -DskipTests -pl crud-store-core,aerospike-crud-store \
+            -s ${{ github.workspace }}/.github/workflows/settings.xml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}

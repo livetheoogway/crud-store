@@ -58,6 +58,8 @@
         <maven-jar-plugin.version>3.2.2</maven-jar-plugin.version>
         <maven-lombok-plugin.version>1.18.20.0</maven-lombok-plugin.version>
         <maven-surefire-plugin.version>3.3.1</maven-surefire-plugin.version>
+        <skip.lombok>true</skip.lombok>
+        <maven-deploy-plugin.version>3.1.2</maven-deploy-plugin.version>
     </properties>
 
     <dependencies>
@@ -108,6 +110,16 @@
                 <configuration>
                     <source>17</source>
                     <target>17</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <version>${maven-deploy-plugin.version}</version>
+                <configuration>
+                    <skip>${project.packaging == 'pom'}</skip>
+                    <deployAtEnd>true</deployAtEnd>
+                    <retryFailedDeploymentCount>3</retryFailedDeploymentCount>
                 </configuration>
             </plugin>
             <plugin>
@@ -213,6 +225,7 @@
                     <outputDirectory>${delombok.output}</outputDirectory>
                     <addOutputDirectory>false</addOutputDirectory>
                     <encoding>UTF-8</encoding>
+                    <skip>${skip.lombok}</skip> <!-- Add this line -->
                 </configuration>
                 <executions>
                     <execution>

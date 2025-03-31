@@ -16,6 +16,7 @@
         <maven.compiler.target>17</maven.compiler.target>
         <caffeine.version>3.1.1</caffeine.version>
         <awaitility.version>3.1.6</awaitility.version>
+        <skip.lombok>false</skip.lombok>
     </properties>
 
     <dependencies>

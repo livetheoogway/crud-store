@@ -19,6 +19,7 @@
         <validation-api.version>2.0.1.Final</validation-api.version>
         <aerospike.testcontainer.version>1.0.8</aerospike.testcontainer.version>
         <junit.mockito.version>4.2.0</junit.mockito.version>
+        <skip.lombok>false</skip.lombok>
     </properties>
 
     <dependencies>
