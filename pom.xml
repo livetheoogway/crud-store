@@ -7,13 +7,11 @@
     <groupId>com.livetheoogway.crudstore</groupId>
     <artifactId>crud-store</artifactId>
     <packaging>pom</packaging>
-    <version>1.2.9.7</version>
+    <version>1.2.9.8</version>
 
-    <name>crud-store</name>
-    <description>
-        A collection of CRUD stores implementing a clean interface.
-    </description>
     <url>https://github.com/livetheoogway/crudstore</url>
+    <description>A collection of CRUD stores implementing a clean interface.</description>
+    <name>crud-store</name>
 
     <modules>
         <module>crud-store-core</module>
@@ -323,7 +321,7 @@
         <repository>
             <id>github</id>
             <name>LiveTheOogway Apache Maven Packages</name>
-            <url>https://maven.pkg.github.com/livetheoogway/crud-store</url>
+            <url>https://maven.pkg.github.com/livetheoogway/crudstore</url>
         </repository>
     </distributionManagement>
 
