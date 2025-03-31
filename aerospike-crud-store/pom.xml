@@ -5,7 +5,7 @@
     <parent>
         <artifactId>crud-store</artifactId>
         <groupId>com.livetheoogway.crudstore</groupId>
-        <version>1.2.9.4</version>
+        <version>1.2.9.5</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
