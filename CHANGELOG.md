@@ -1,5 +1,18 @@
 # Changelog
 
+## [v1.2.10](https://github.com/livetheoogway/crud-store/tree/v1.2.10) (2025-03-31)
+
+[Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.2.7...v1.2.10)
+
+**Closed issues:**
+
+- Indexes get created even when reference is not required [\#27](https://github.com/livetheoogway/crud-store/issues/27)
+
+**Merged pull requests:**
+
+- Indexing is now optional through an explicit RefIdSetting [\#28](https://github.com/livetheoogway/crud-store/pull/28) ([Tushar-Naik](https://github.com/Tushar-Naik))
+- Issue 19 [\#26](https://github.com/livetheoogway/crud-store/pull/26) ([Tushar-Naik](https://github.com/Tushar-Naik))
+
 ## [1.2.7](https://github.com/livetheoogway/crud-store/tree/1.2.7) (2023-09-20)
 
 [Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.2.6...1.2.7)
