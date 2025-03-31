@@ -102,7 +102,6 @@ jobs:
           CI_USER: github-actions
           CI_EMAIL: github-actions@github.com
         run: |
-          git config --local user.email "$CI_EMAIL"
           git config --local user.name "$CI_USER"
           git status
           git add CHANGELOG.md && git commit -m 'Updated CHANGELOG.md' && echo "push=true" >> $GITHUB_ENV || echo "No changes to CHANGELOG.md"

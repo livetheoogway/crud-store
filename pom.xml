@@ -7,7 +7,7 @@
     <groupId>com.livetheoogway.crudstore</groupId>
     <artifactId>crud-store</artifactId>
     <packaging>pom</packaging>
-    <version>1.2.9.8</version>
+    <version>1.2.9.9</version>
 
     <url>https://github.com/livetheoogway/crudstore</url>
     <description>A collection of CRUD stores implementing a clean interface.</description>
@@ -49,12 +49,15 @@
         <lombok.version>1.18.30</lombok.version>
         <slf4j.api>1.7.36</slf4j.api>
         <sonar.version>3.9.0.2155</sonar.version>
+
+        <maven.deploy.skip>false</maven.deploy.skip>
         <maven-javadoc-plugin.version>3.8.0</maven-javadoc-plugin.version>
         <maven.plugin.compiler.version>3.8.1</maven.plugin.compiler.version>
         <maven-jacoco-plugin.version>0.8.7</maven-jacoco-plugin.version>
         <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
         <maven-jar-plugin.version>3.2.2</maven-jar-plugin.version>
         <maven-lombok-plugin.version>1.18.20.0</maven-lombok-plugin.version>
+        <maven-surefire-plugin.version>3.3.1</maven-surefire-plugin.version>
     </properties>
 
     <dependencies>
@@ -96,7 +99,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.0.0-M5</version>
+                <version>${maven-surefire-plugin.version}</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -321,7 +324,7 @@
         <repository>
             <id>github</id>
             <name>LiveTheOogway Apache Maven Packages</name>
-            <url>https://maven.pkg.github.com/livetheoogway/crudstore</url>
+            <url>https://maven.pkg.github.com/livetheoogway/crud-store</url>
         </repository>
     </distributionManagement>
 

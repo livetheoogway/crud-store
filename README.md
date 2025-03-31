@@ -10,7 +10,12 @@
     </a>
     <a href="https://github.com/livetheoogway/crud-store/blob/master/LICENSE">
     	<img src="https://img.shields.io/github/license/livetheoogway/crud-store" alt="license" />
-    </a></p>
+    </a>
+    <a href="https://javadoc.io/doc/com.livetheoogway.crudstore/crud-store">
+    	<img src="https://javadoc.io/badge2/com.livetheoogway.crudstore/crud-store/javadoc.svg" alt="javadoc" />
+    </a>
+  </p>
+
   <p align="center">
     <a href="https://sonarcloud.io/project/overview?id=livetheoogway_crud-store">
     	<img src="https://sonarcloud.io/api/project_badges/measure?project=livetheoogway_crud-store&metric=alert_status"/>
