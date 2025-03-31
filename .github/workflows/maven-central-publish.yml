@@ -57,15 +57,15 @@ jobs:
           server-username: MAVEN_USERNAME
           server-password: MAVEN_PASSWORD
 
-#      - name: "🗽 Publish package"
-#        run: mvn clean deploy -DskipTests -Prelease -Dgpg.passphrase=${{ secrets.MAVEN_GPG_PASSPHRASE }}
-#        env:
-#          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-#          MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
-#          MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+      - name: "🗽 Publish package"
+        run: mvn clean deploy -DskipTests -Prelease -Dgpg.passphrase=${{ secrets.MAVEN_GPG_PASSPHRASE }}
+        env:
+          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
 
       - name: "🗽Deploy to github packages"
-        run: mvn -X -B deploy -DskipTests -s ${{ github.workspace }}/.github/workflows/settings.xml
+        run: mvn -X -B deploy -DskipTests -s ${{ github.workspace }}/.github/workflows/settings.xml || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}

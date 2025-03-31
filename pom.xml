@@ -7,7 +7,7 @@
     <groupId>com.livetheoogway.crudstore</groupId>
     <artifactId>crud-store</artifactId>
     <packaging>pom</packaging>
-    <version>1.2.9.13</version>
+    <version>1.2.9.14</version>
 
     <url>https://github.com/livetheoogway/crudstore</url>
     <description>A collection of CRUD stores implementing a clean interface.</description>
@@ -118,7 +118,7 @@
                 <version>${maven-deploy-plugin.version}</version>
                 <configuration>
                     <skip>${project.packaging == 'pom'}</skip>
-                    <deployAtEnd>false</deployAtEnd>
+                    <deployAtEnd>true</deployAtEnd>
                     <retryFailedDeploymentCount>3</retryFailedDeploymentCount>
                 </configuration>
             </plugin>
