@@ -3,7 +3,7 @@
   <p align="center">A collection of CRUD components implementing a clean interface<p>
   <p align="center">
     <a href="https://github.com/livetheoogway/crud-store/actions">
-    	<img src="https://github.com/livetheoogway/crud-store/actions/workflows/actions.yml/badge.svg"/>
+    	<img src="https://github.com/livetheoogway/crud-store/actions/workflows/build.yml/badge.svg"/>
     </a>
     <a href="https://s01.oss.sonatype.org/content/repositories/releases/com/livetheoogway/crudstore/">
     	<img src="https://img.shields.io/maven-central/v/com.livetheoogway.crudstore/crud-store"/>
