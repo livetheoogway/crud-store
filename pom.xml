@@ -52,6 +52,11 @@
         <slf4j.api>1.7.36</slf4j.api>
         <sonar.version>3.9.0.2155</sonar.version>
         <maven-javadoc-plugin.version>3.8.0</maven-javadoc-plugin.version>
+        <maven.plugin.compiler.version>3.8.1</maven.plugin.compiler.version>
+        <maven-jacoco-plugin.version>0.8.7</maven-jacoco-plugin.version>
+        <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
+        <maven-jar-plugin.version>3.2.2</maven-jar-plugin.version>
+        <maven-lombok-plugin.version>1.18.20.0</maven-lombok-plugin.version>
     </properties>
 
     <dependencies>
@@ -98,12 +103,16 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
+                <version>${maven.plugin.compiler.version}</version>
+                <configuration>
+                    <source>17</source>
+                    <target>17</target>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.3.0</version>
+                <version>${maven-source-plugin.version}</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -116,7 +125,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.2.2</version>
+                <version>${maven-jar-plugin.version}</version>
                 <executions>
                     <execution>
                         <id>default-jar</id>
@@ -150,7 +159,7 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.7</version>
+                <version>${maven-jacoco-plugin.version}</version>
                 <executions>
                     <execution>
                         <goals>
@@ -190,7 +199,7 @@
             <plugin>
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok-maven-plugin</artifactId>
-                <version>1.18.20.0</version>
+                <version>${maven-lombok-plugin.version}</version>
                 <dependencies>
                     <dependency>
                         <groupId>org.projectlombok</groupId>
@@ -202,6 +211,7 @@
                     <sourceDirectory>${project.basedir}/src/main/java</sourceDirectory>
                     <outputDirectory>${delombok.output}</outputDirectory>
                     <addOutputDirectory>false</addOutputDirectory>
+                    <encoding>UTF-8</encoding>
                 </configuration>
                 <executions>
                     <execution>
