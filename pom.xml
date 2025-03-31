@@ -322,8 +322,8 @@
     <distributionManagement>
         <repository>
             <id>github</id>
-            <name>GitHub PhonePe Apache Maven Packages</name>
-            <url>https://maven.pkg.github.com/phonepe/crud-store</url>
+            <name>LiveTheOogway Apache Maven Packages</name>
+            <url>https://maven.pkg.github.com/livetheoogway/crud-store</url>
         </repository>
     </distributionManagement>
 
