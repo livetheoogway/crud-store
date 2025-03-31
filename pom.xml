@@ -118,7 +118,7 @@
                 <version>${maven-deploy-plugin.version}</version>
                 <configuration>
                     <skip>${project.packaging == 'pom'}</skip>
-                    <deployAtEnd>true</deployAtEnd>
+                    <deployAtEnd>false</deployAtEnd>
                     <retryFailedDeploymentCount>3</retryFailedDeploymentCount>
                 </configuration>
             </plugin>
@@ -337,7 +337,7 @@
         <repository>
             <id>github</id>
             <name>LiveTheOogway Apache Maven Packages</name>
-            <url>https://maven.pkg.github.com/livetheoogway/crud-store</url>
+            <url>https://maven.pkg.github.com/</url>
         </repository>
     </distributionManagement>
 
