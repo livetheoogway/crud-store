@@ -39,4 +39,49 @@ public interface ErrorHandler<T> {
     Optional<T> onExecutionError(final String id, Exception e);
 
     List<T>  onRefIdLookupFailure(final String refId);
+
+    @SuppressWarnings("unchecked")
+    default <R> ErrorHandler<R> cloneOnType() {
+        return new ErrorHandler<>() {
+            @Override
+            public void onDeleteUnsuccessful() {
+                ErrorHandler.this.onDeleteUnsuccessful();
+            }
+
+            @Override
+            public Optional<R> onNoRecordFound(String id) {
+                return ErrorHandler.this.onNoRecordFound(id).map(r -> (R) r);
+            }
+
+            @Override
+            public Optional<R> onDeSerializationError(String id, JsonProcessingException e) {
+                return ErrorHandler.this.onDeSerializationError(id, e).map(r -> (R) r);
+            }
+
+            @Override
+            public Optional<R> onAerospikeError(String id, AerospikeException e) {
+                return ErrorHandler.this.onAerospikeError(id, e).map(r -> (R) r);
+            }
+
+            @Override
+            public List<R> onAerospikeErrorForRefId(String id, AerospikeException e) {
+                return (List<R>) ErrorHandler.this.onAerospikeErrorForRefId(id, e);
+            }
+
+            @Override
+            public Optional<R> onSerializationError(String id, JsonProcessingException e) {
+                return ErrorHandler.this.onSerializationError(id, e).map(r -> (R) r);
+            }
+
+            @Override
+            public Optional<R> onExecutionError(String id, Exception e) {
+                return ErrorHandler.this.onExecutionError(id, e).map(r -> (R) r);
+            }
+
+            @Override
+            public List<R> onRefIdLookupFailure(String refId) {
+                return (List<R>) ErrorHandler.this.onRefIdLookupFailure(refId);
+            }
+        };
+    }
 }

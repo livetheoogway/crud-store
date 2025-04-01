@@ -53,6 +53,9 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
     private static final String DEFAULT_REF_ID_BIN = "refId";
     private static final String DEFAULT_REF_ID_INDEX_SUFFIX = "_idx";
 
+    public static final AerospikeStoreSetting INDEX_DISABLED_STORE_SETTING = AerospikeStoreSetting.builder()
+            .refIdSetting(RefIdSetting.builder().disabled(true).build()).build();
+
     protected final ObjectMapper mapper;
     protected final IAerospikeClient client;
     protected final NamespaceSet namespaceSet;
@@ -140,7 +143,7 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
      */
     @Override
     public void create(final T item) {
-        write(item.id(), () -> recordDetails(item, null), createPolicy);
+        write(item.id(), () -> recordDetails(item, null), createPolicy, errorHandler);
     }
 
     @Override
@@ -148,7 +151,7 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
         if (storeSetting.refIdSetting().disabled()) {
             log.warn("ReferenceId based lookup is disabled for the set:{} in the storeSetting. Ensure that it is enabled", namespaceSet.set());
         }
-        write(item.id(), () -> recordDetails(item, refIds), createPolicy);
+        write(item.id(), () -> recordDetails(item, refIds), createPolicy, errorHandler);
     }
 
     /**
@@ -158,7 +161,7 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
      */
     @Override
     public void update(final T item) {
-        write(item.id(), () -> recordDetails(item, null), updateOnly);
+        write(item.id(), () -> recordDetails(item, null), updateOnly, errorHandler);
     }
 
 
@@ -316,9 +319,10 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
         }
     }
 
-    protected void write(final String id,
-                         final ESupplier<RecordDetails> recordDetailsSupplier,
-                         final WritePolicy defaultWritePolicy) {
+    protected <R> void write(final String id,
+                             final ESupplier<RecordDetails> recordDetailsSupplier,
+                             final WritePolicy defaultWritePolicy,
+                             final ErrorHandler<R> errorHandler) {
         exec("operation:" + defaultWritePolicy.recordExistsAction, id, () -> {
             final var recordDetails = recordDetailsSupplier.get();
             var writePolicy = defaultWritePolicy;
