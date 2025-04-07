@@ -19,6 +19,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 
 @SuppressWarnings("java:S112")
 public interface ErrorHandler<T> {
@@ -41,7 +42,7 @@ public interface ErrorHandler<T> {
     List<T>  onRefIdLookupFailure(final String refId);
 
     @SuppressWarnings("unchecked")
-    default <R> ErrorHandler<R> cloneOnType() {
+    default <R> ErrorHandler<R> cloneOnType(Function<T, R> mapper) {
         return new ErrorHandler<>() {
             @Override
             public void onDeleteUnsuccessful() {
@@ -50,17 +51,17 @@ public interface ErrorHandler<T> {
 
             @Override
             public Optional<R> onNoRecordFound(String id) {
-                return ErrorHandler.this.onNoRecordFound(id).map(r -> (R) r);
+                return ErrorHandler.this.onNoRecordFound(id).map(mapper);
             }
 
             @Override
             public Optional<R> onDeSerializationError(String id, JsonProcessingException e) {
-                return ErrorHandler.this.onDeSerializationError(id, e).map(r -> (R) r);
+                return ErrorHandler.this.onDeSerializationError(id, e).map(mapper);
             }
 
             @Override
             public Optional<R> onAerospikeError(String id, AerospikeException e) {
-                return ErrorHandler.this.onAerospikeError(id, e).map(r -> (R) r);
+                return ErrorHandler.this.onAerospikeError(id, e).map(mapper);
             }
 
             @Override
@@ -70,17 +71,17 @@ public interface ErrorHandler<T> {
 
             @Override
             public Optional<R> onSerializationError(String id, JsonProcessingException e) {
-                return ErrorHandler.this.onSerializationError(id, e).map(r -> (R) r);
+                return ErrorHandler.this.onSerializationError(id, e).map(mapper);
             }
 
             @Override
             public Optional<R> onExecutionError(String id, Exception e) {
-                return ErrorHandler.this.onExecutionError(id, e).map(r -> (R) r);
+                return ErrorHandler.this.onExecutionError(id, e).map(mapper);
             }
 
             @Override
             public List<R> onRefIdLookupFailure(String refId) {
-                return (List<R>) ErrorHandler.this.onRefIdLookupFailure(refId);
+                return ErrorHandler.this.onRefIdLookupFailure(refId).stream().map(mapper).toList();
             }
         };
     }
