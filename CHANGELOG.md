@@ -1,5 +1,13 @@
 # Changelog
 
+## [v1.2.11](https://github.com/livetheoogway/crud-store/tree/v1.2.11) (2025-04-07)
+
+[Full Changelog](https://github.com/livetheoogway/crud-store/compare/v1.2.10...v1.2.11)
+
+**Merged pull requests:**
+
+- add error handling to write operations and bump version to 1.2.11 [\#31](https://github.com/livetheoogway/crud-store/pull/31) ([Tushar-Naik](https://github.com/Tushar-Naik))
+
 ## [v1.2.10](https://github.com/livetheoogway/crud-store/tree/v1.2.10) (2025-03-31)
 
 [Full Changelog](https://github.com/livetheoogway/crud-store/compare/1.2.7...v1.2.10)
