@@ -32,18 +32,28 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
  * A simple file backed {@link ReferenceExtendedStore} implementation.
  * <p>
- * All items are serialized to JSON and persisted to a single backing file on disk. The entire dataset is held in
- * memory and flushed to disk on every mutation, making this implementation suitable for small datasets, local
- * development, tests and tooling, rather than high throughput production workloads.
+ * The entire dataset is loaded into memory once (at construction) and kept there. Reads are served entirely from the
+ * in-memory view, so they never touch the disk. Every mutation is applied to an in-memory copy, persisted to disk, and
+ * only swapped in as the live view once the write succeeds; this keeps the in-memory view and the on-disk file from
+ * ever diverging, even if a write fails. This makes the store suitable for small datasets, local development, tests and
+ * tooling, rather than high throughput or large scale production workloads.
  * <p>
- * The store is thread-safe; reads and writes are guarded by an internal lock so that the in-memory view and the
- * on-disk file never diverge. Writes are atomic: data is written to a temporary file and then moved into place.
+ * The store is thread-safe. A {@link ReadWriteLock} guards access, so reads can proceed concurrently while mutations
+ * are exclusive. Writes are atomic on disk: data is written to a temporary file and then moved into place.
+ * <p>
+ * <b>Single process only:</b> the lock guards a single instance within a single JVM. This store does not provide any
+ * cross-process or cross-instance coordination, so pointing multiple {@code FileStore} instances (or multiple
+ * processes) at the same backing file concurrently can lead to lost updates. Use a single instance per file.
  *
  * @param <T> type of item being stored, must implement the {@link Id} interface
  * @since 1.3.0
@@ -54,7 +64,17 @@ public class FileStore<T extends Id> implements ReferenceExtendedStore<T> {
     private final ObjectMapper mapper;
     private final Path dataFile;
     private final TypeReference<T> typeReference;
-    private final Object lock = new Object();
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
+
+    /**
+     * live in-memory view of the data; replaced wholesale (never mutated in place) once a write succeeds
+     */
+    private Map<String, T> data;
+
+    /**
+     * live in-memory view of the reference index; replaced wholesale once a write succeeds
+     */
+    private Map<String, List<String>> index;
 
     /**
      * @param mapper   jackson object mapper used for (de)serialization
@@ -79,153 +99,176 @@ public class FileStore<T extends Id> implements ReferenceExtendedStore<T> {
         this.mapper = mapper;
         this.dataFile = dataFile;
         this.typeReference = typeReference;
-        initializeBackingFile();
+        initialize();
     }
 
     @Override
     public void create(final T item) {
-        synchronized (lock) {
-            final Persisted<T> persisted = read();
-            if (persisted.data().containsKey(item.id())) {
+        mutate((data, index) -> {
+            if (data.containsKey(item.id())) {
                 throw new IllegalArgumentException("item already created for id:" + item.id());
             }
-            persisted.data().put(item.id(), item);
-            write(persisted);
-        }
+            data.put(item.id(), item);
+        });
     }
 
     @Override
     public void create(final T item, final List<String> refIds) {
-        synchronized (lock) {
-            final Persisted<T> persisted = read();
-            if (persisted.data().containsKey(item.id())) {
+        mutate((data, index) -> {
+            if (data.containsKey(item.id())) {
                 throw new IllegalArgumentException("item already created for id:" + item.id());
             }
-            persisted.data().put(item.id(), item);
+            data.put(item.id(), item);
             if (refIds != null) {
-                refIds.forEach(refId -> persisted.index()
-                        .computeIfAbsent(refId, k -> new ArrayList<>())
-                        .add(item.id()));
+                refIds.forEach(refId -> index.computeIfAbsent(refId, k -> new ArrayList<>()).add(item.id()));
             }
-            write(persisted);
-        }
+        });
     }
 
     @Override
     public void update(final T item) {
-        synchronized (lock) {
-            final Persisted<T> persisted = read();
-            if (!persisted.data().containsKey(item.id())) {
+        mutate((data, index) -> {
+            if (!data.containsKey(item.id())) {
                 throw new IllegalArgumentException("update cannot be done on unknown item id:" + item.id());
             }
-            persisted.data().put(item.id(), item);
-            write(persisted);
-        }
+            data.put(item.id(), item);
+        });
     }
 
     @Override
     public void delete(final String id) {
-        synchronized (lock) {
-            final Persisted<T> persisted = read();
-            if (!persisted.data().containsKey(id)) {
+        mutate((data, index) -> {
+            if (!data.containsKey(id)) {
                 throw new IllegalArgumentException("id doesn't exist, cannot be deleted id:" + id);
             }
-            persisted.data().remove(id);
-            persisted.index().values().forEach(ids -> ids.remove(id));
-            write(persisted);
-        }
+            data.remove(id);
+            index.values().forEach(ids -> ids.remove(id));
+        });
     }
 
     @Override
     public Optional<T> get(final String id) {
-        synchronized (lock) {
-            return Optional.ofNullable(read().data().get(id));
-        }
+        return read(() -> Optional.ofNullable(data.get(id)));
     }
 
     @Override
     public Map<String, T> get(final List<String> ids) {
-        synchronized (lock) {
-            final Persisted<T> persisted = read();
-            return ids.stream()
-                    .filter(persisted.data()::containsKey)
-                    .collect(Collectors.toMap(Function.identity(), persisted.data()::get));
-        }
+        return read(() -> ids.stream()
+                .filter(data::containsKey)
+                .collect(Collectors.toMap(Function.identity(), data::get)));
     }
 
     @Override
     public List<T> list() {
-        synchronized (lock) {
-            return new ArrayList<>(read().data().values());
-        }
+        return read(() -> new ArrayList<>(data.values()));
     }
 
     @Override
     public List<T> getByRefId(final String refId) {
-        synchronized (lock) {
-            final Persisted<T> persisted = read();
-            return persisted.index().getOrDefault(refId, List.of()).stream()
-                    .map(persisted.data()::get)
-                    .filter(Objects::nonNull)
-                    .toList();
+        return read(() -> index.getOrDefault(refId, List.of()).stream()
+                .map(data::get)
+                .filter(Objects::nonNull)
+                .toList());
+    }
+
+    /**
+     * Runs a read under the shared read lock, allowing reads to proceed concurrently.
+     */
+    private <R> R read(final Supplier<R> reader) {
+        lock.readLock().lock();
+        try {
+            return reader.get();
+        } finally {
+            lock.readLock().unlock();
         }
     }
 
-    private void initializeBackingFile() {
+    /**
+     * Applies a mutation atomically. The mutation is performed against fresh copies of the current state (so a
+     * validation failure leaves the live view untouched), the copies are persisted to disk, and only once the write
+     * succeeds are they swapped in as the live view. This guarantees the in-memory view never diverges from disk.
+     */
+    private void mutate(final BiConsumer<Map<String, T>, Map<String, List<String>>> mutation) {
+        lock.writeLock().lock();
+        try {
+            final Map<String, T> newData = new LinkedHashMap<>(data);
+            final Map<String, List<String>> newIndex = deepCopyIndex(index);
+            mutation.accept(newData, newIndex);
+            persist(newData, newIndex);
+            this.data = newData;
+            this.index = newIndex;
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    private void initialize() {
         try {
             if (dataFile.getParent() != null) {
                 Files.createDirectories(dataFile.getParent());
             }
-            if (!Files.exists(dataFile)) {
-                write(new Persisted<>(new LinkedHashMap<>(), new LinkedHashMap<>()));
+            if (Files.exists(dataFile)) {
+                final Persisted<T> loaded = loadFromDisk();
+                this.data = loaded.data();
+                this.index = loaded.index();
+            } else {
+                this.data = new LinkedHashMap<>();
+                this.index = new LinkedHashMap<>();
+                persist(this.data, this.index);
             }
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to initialize backing file:" + dataFile, e);
         }
     }
 
-    private Persisted<T> read() {
+    private Persisted<T> loadFromDisk() {
         try {
             final String content = Files.readString(dataFile);
             if (content.isBlank()) {
                 return new Persisted<>(new LinkedHashMap<>(), new LinkedHashMap<>());
             }
             final FileEnvelope envelope = mapper.readValue(content, FileEnvelope.class);
-            final Map<String, T> data = new LinkedHashMap<>();
-            for (final Map.Entry<String, Object> entry : envelope.data().entrySet()) {
-                data.put(entry.getKey(), mapper.convertValue(entry.getValue(), typeReference));
+            final Map<String, T> loadedData = new LinkedHashMap<>();
+            if (envelope.data() != null) {
+                for (final Map.Entry<String, Object> entry : envelope.data().entrySet()) {
+                    loadedData.put(entry.getKey(), mapper.convertValue(entry.getValue(), typeReference));
+                }
             }
-            final Map<String, List<String>> index = envelope.index() == null
-                                                     ? new LinkedHashMap<>()
-                                                     : new LinkedHashMap<>(envelope.index());
-            return new Persisted<>(data, index);
+            final Map<String, List<String>> loadedIndex = envelope.index() == null
+                                                           ? new LinkedHashMap<>()
+                                                           : deepCopyIndex(envelope.index());
+            return new Persisted<>(loadedData, loadedIndex);
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to read backing file:" + dataFile, e);
         }
     }
 
-    private void write(final Persisted<T> persisted) {
+    private void persist(final Map<String, T> data, final Map<String, List<String>> index) {
         try {
-            final FileEnvelope envelope = new FileEnvelope(
-                    new LinkedHashMap<>(persisted.data()), new LinkedHashMap<>(persisted.index()));
+            final FileEnvelope envelope = new FileEnvelope(new LinkedHashMap<>(data), new LinkedHashMap<>(index));
             final String content = mapper.writeValueAsString(envelope);
             final Path tmp = Files.createTempFile(
                     dataFile.toAbsolutePath().getParent(), dataFile.getFileName().toString(), ".tmp");
-            Files.writeString(tmp, content);
-            Files.move(tmp, dataFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            try {
+                Files.writeString(tmp, content);
+                Files.move(tmp, dataFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (IOException e) {
+                Files.deleteIfExists(tmp);
+                throw e;
+            }
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to write backing file:" + dataFile, e);
         }
     }
 
-    /**
-     * in-memory, typed view of the backing file
-     */
+    private static Map<String, List<String>> deepCopyIndex(final Map<String, List<String>> index) {
+        final Map<String, List<String>> copy = new LinkedHashMap<>();
+        for (final Map.Entry<String, List<String>> entry : index.entrySet()) {
+            copy.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+        }
+        return copy;
+    }
     private record Persisted<T extends Id>(Map<String, T> data, Map<String, List<String>> index) {}
 
-    /**
-     * on-disk, loosely typed representation. The item values are kept as raw objects so that the concrete type can be
-     * resolved against {@link #typeReference} on read, supporting generic stores.
-     */
     private record FileEnvelope(Map<String, Object> data, Map<String, List<String>> index) {}
 }

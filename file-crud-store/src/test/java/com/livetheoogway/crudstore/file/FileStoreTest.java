@@ -28,6 +28,10 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -154,5 +158,51 @@ class FileStoreTest {
         assertEquals("u1", result.get().profile().id());
         assertEquals("Rick", result.get().profile().name());
         assertEquals(70, result.get().profile().age());
+    }
+
+    @Test
+    void concurrentCreatesAreAllPersisted() throws Exception {
+        final FileStore<UserData> store = newStore();
+        final int threads = 8;
+        final int perThread = 50;
+        final ExecutorService executor = Executors.newFixedThreadPool(threads);
+        try {
+            final List<Future<?>> futures = new java.util.ArrayList<>();
+            for (int t = 0; t < threads; t++) {
+                final int threadId = t;
+                futures.add(executor.submit(() -> {
+                    for (int i = 0; i < perThread; i++) {
+                        store.create(new UserData(threadId + "-" + i, "name", i));
+                    }
+                }));
+            }
+            for (final Future<?> future : futures) {
+                future.get(30, TimeUnit.SECONDS);
+            }
+        } finally {
+            executor.shutdownNow();
+        }
+
+        /* no writes were lost despite concurrent mutation */
+        assertEquals(threads * perThread, store.list().size());
+
+        /* the on-disk view matches the in-memory view */
+        final FileStore<UserData> reopened = newStore();
+        assertEquals(threads * perThread, reopened.list().size());
+    }
+
+    @Test
+    void failedMutationLeavesStateUntouched() {
+        final FileStore<UserData> store = newStore();
+        store.create(new UserData("1", "me", 2));
+
+        /* a duplicate create fails, but must not corrupt or drop the existing entry */
+        assertThrows(RuntimeException.class, () -> store.create(new UserData("1", "clobber", 9)));
+
+        final Optional<UserData> data = store.get("1");
+        assertTrue(data.isPresent());
+        assertEquals("me", data.get().name());
+        assertEquals(2, data.get().age());
+        assertEquals(1, store.list().size());
     }
 }
