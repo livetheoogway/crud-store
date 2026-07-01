@@ -1,5 +1,5 @@
 /*
- * Copyright 2022. Live the Oogway, Tushar Naik
+ * Copyright 2026. Live the Oogway, Tushar Naik
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in
  * compliance with the License. You may obtain a copy of the License at
@@ -33,8 +33,8 @@ import com.livetheoogway.crudstore.core.Id;
 import com.livetheoogway.crudstore.core.ReferenceExtendedStore;
 import lombok.extern.slf4j.Slf4j;
 
-import javax.validation.constraints.NotEmpty;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;

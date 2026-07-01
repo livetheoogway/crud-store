@@ -9,28 +9,26 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>crud-store-core</artifactId>
+    <artifactId>file-crud-store</artifactId>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
-        <caffeine.version>3.2.4</caffeine.version>
-        <awaitility.version>4.3.0</awaitility.version>
+        <jackson-core.version>2.19.4</jackson-core.version>
         <skip.lombok>false</skip.lombok>
     </properties>
 
     <dependencies>
         <dependency>
-            <groupId>com.github.ben-manes.caffeine</groupId>
-            <artifactId>caffeine</artifactId>
-            <version>${caffeine.version}</version>
+            <groupId>com.livetheoogway.crudstore</groupId>
+            <artifactId>crud-store-core</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.awaitility</groupId>
-            <artifactId>awaitility</artifactId>
-            <version>${awaitility.version}</version>
-            <scope>test</scope>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson-core.version}</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
-
 </project>

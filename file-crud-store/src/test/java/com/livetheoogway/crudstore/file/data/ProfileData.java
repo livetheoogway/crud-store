@@ -12,12 +12,9 @@
  * under the License.
  */
 
-package com.livetheoogway.crudstore.aerospike;
+package com.livetheoogway.crudstore.file.data;
 
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
+import com.livetheoogway.crudstore.core.Id;
 
-public record NamespaceSet(
-        @NotNull @NotEmpty String namespace,
-        @NotNull @NotEmpty String set) {
+public record ProfileData<T>(String id, T profile) implements Id {
 }
