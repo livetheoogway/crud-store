@@ -1,5 +1,5 @@
 /*
- * Copyright 2022. Live the Oogway, Tushar Naik
+ * Copyright 2026. Live the Oogway, Tushar Naik
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in
  * compliance with the License. You may obtain a copy of the License at
@@ -30,6 +30,8 @@ import com.livetheoogway.crudstore.aerospike.stores.UserAerospikeReplaceStore;
 import com.livetheoogway.crudstore.aerospike.stores.UserAerospikeStore;
 import com.livetheoogway.crudstore.aerospike.util.DataUtils;
 import com.livetheoogway.crudstore.aerospike.util.TestUtils;
+import com.livetheoogway.crudstore.core.ConcurrentUpdateException;
+import com.livetheoogway.crudstore.core.Versioned;
 import io.appform.testcontainers.aerospike.AerospikeContainerConfiguration;
 import io.appform.testcontainers.aerospike.container.AerospikeContainer;
 import org.junit.jupiter.api.AfterAll;
@@ -311,6 +313,68 @@ class AerospikeStoreTest {
 
         final var testData = DataUtils.generateTestData("77");
         newStore.create(testData.item());
+        Mockito.verify(errorHandler, Mockito.times(1)).onAerospikeError(any(), any());
+    }
+
+    @Test
+    void testCheckAndUpdateAppliesOnMatchingGeneration() {
+        /* put some data */
+        final var me = DataUtils.generateTestData("cas-1", "me", 20).item();
+        store.create(me);
+
+        /* read value + version (Aerospike generation) */
+        final Optional<Versioned<UserData, Long>> versioned = store.getWithVersion(me.id());
+        assertTrue(versioned.isPresent());
+        assertEquals("me", versioned.get().value().name());
+
+        /* CAS with the matching generation succeeds */
+        final var updated = new UserData(me.id(), "me updated", 21);
+        store.checkAndUpdate(updated, versioned.get().version());
+
+        final Optional<Versioned<UserData, Long>> afterUpdate = store.getWithVersion(me.id());
+        assertTrue(afterUpdate.isPresent());
+        assertEquals("me updated", afterUpdate.get().value().name());
+        /* generation advanced, so the old version is now stale */
+        assertTrue(afterUpdate.get().version().longValue() != versioned.get().version().longValue());
+    }
+
+    @Test
+    void testCheckAndUpdateFailsOnStaleGeneration() {
+        final var me = DataUtils.generateTestData("cas-2", "me", 20).item();
+        store.create(me);
+        final Long staleVersion = store.getWithVersion(me.id()).orElseThrow().version();
+
+        /* someone else updates the record, bumping the generation */
+        store.update(new UserData(me.id(), "someone else", 30));
+
+        /* our CAS off the stale generation must throw and leave the newer value intact */
+        assertThrows(ConcurrentUpdateException.class,
+                     () -> store.checkAndUpdate(new UserData(me.id(), "me updated", 21), staleVersion));
+        assertEquals("someone else", store.get(me.id()).orElseThrow().name());
+    }
+
+    @Test
+    void testCheckAndUpdateFailsOnAbsentRecord() {
+        /* no record present -> compare-and-set throws ConcurrentUpdateException, not a generic error */
+        assertTrue(store.getWithVersion("cas-absent").isEmpty());
+        assertThrows(ConcurrentUpdateException.class,
+                     () -> store.checkAndUpdate(new UserData("cas-absent", "ghost", 1), 0L));
+    }
+
+    @Test
+    void testCheckAndUpdateSurfacesRealAerospikeErrors() {
+        /* a non-generation Aerospike error must be routed through the error handler, not treated as a lock conflict */
+        final IAerospikeClient newASClient = mock(AerospikeClient.class);
+        when(newASClient.getWritePolicyDefault()).thenReturn(new WritePolicy());
+        doThrow(new AerospikeException(22, "boom")).when(newASClient)
+                .put(any(WritePolicy.class), any(Key.class), any());
+        final ErrorHandler<UserData> errorHandler = mock(ErrorHandler.class);
+        final UserAerospikeStore newStore
+                = new UserAerospikeStore(newASClient,
+                                         new NamespaceSet("test", "cas-error"),
+                                         new ObjectMapper(), errorHandler);
+
+        newStore.checkAndUpdate(new UserData("x", "y", 1), 3L);
         Mockito.verify(errorHandler, Mockito.times(1)).onAerospikeError(any(), any());
     }
 }

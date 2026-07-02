@@ -36,7 +36,7 @@
 
 I used to write these crud stores several times across use-cases, decided to create a simple interface, and some default
 abstractions of popular databases that implements the interface.<br>
-I've been able to add the abstraction for aerospike. Impls for other databases as contributions are welcome.
+I've been able to add abstractions for Aerospike and for a simple file backed store. Impls for other databases as contributions are welcome.
 
 ## Features
 
@@ -54,6 +54,36 @@ An extension to this has been added (since 1.2.5) ReferenceExtendedStore, to sup
 ```java
     void create(final T item, final List<String> refIds);
     List<T> getByRefId(final String refId);
+```
+
+#### Optimistic concurrency (compare-and-set)
+
+Since 1.3.0, stores that can honour an atomic check-and-set implement `ConcurrentStore<T, V>` (a sub-interface of
+`Store`). This is kept separate from the base `Store` (interface segregation), so callers handed a plain `Store` never
+risk a runtime `UnsupportedOperationException`. Read an item together with an opaque version stamp, then update it only
+if it has not changed in the meantime:
+```java
+    Optional<Versioned<T, V>> getWithVersion(final String id);
+    void checkAndUpdate(final T item, final V expectedVersion);
+```
+The version type `V` is left to the store, so each backend can use its natural concurrency token: a numeric generation
+(`Long`) for Aerospike/HBase, or an opaque `String` ETag for object stores such as S3/CosmosDB. `checkAndUpdate` throws
+`ConcurrentUpdateException` if the item was absent or was concurrently modified (version mismatch). Throwing (rather
+than returning a boolean) is the idiomatic optimistic-locking contract used by JPA/Hibernate and composes cleanly with
+declarative retry frameworks (Resilience4j, Spring Retry). The Aerospike and File stores implement
+`ConcurrentStore<T, Long>`; the Aerospike store backs the version with the native record generation, so the
+check-and-set is enforced atomically server-side (`GenerationPolicy.EXPECT_GEN_EQUAL`).
+```java
+ConcurrentStore<TestData, Long> store = myAerospikeStore; // AerospikeStore implements ConcurrentStore<T, Long>
+Optional<Versioned<TestData, Long>> current = store.getWithVersion("Id001");
+if (current.isPresent()) {
+    TestData mutated = current.get().value().withName("Rick Sanchez"); // your own copy-with-change
+    try {
+        store.checkAndUpdate(mutated, current.get().version());
+    } catch (ConcurrentUpdateException e) {
+        // someone else changed it first; re-read via getWithVersion and retry
+    }
+}
 ```
 
 #### Cached Store
@@ -133,6 +163,44 @@ public class Logic {
 }
 ```
 
+#### File Store
+
+A simple file backed `ReferenceExtendedStore` (since 1.3.0). All items are serialized to JSON and persisted to a single
+backing file on disk. It also implements `ReferenceExtendedStore`, so reference based lookups (`getByRefId`) are
+supported through an in-file index.
+
+The full dataset is loaded into memory once at construction, so reads are served entirely from memory. Each mutation is
+applied to a copy, persisted to disk, and only then swapped in as the live view — so the in-memory view never diverges
+from the file, even if a write fails. It is thread-safe (a `ReadWriteLock` lets reads run concurrently while mutations
+are exclusive) and writes are atomic (data is written to a temporary file and then moved into place), so the on-disk
+file never ends up half-written.
+
+> [!NOTE]
+> The entire dataset is held in memory and the whole file is rewritten on every mutation. This makes the File Store
+> best suited for **small datasets, local development, tests and tooling**, rather than high throughput or large scale
+> production workloads. It is also **single-process only** — it does no cross-process/cross-instance coordination, so
+> use a single instance per file. For anything beyond this, prefer the Aerospike Store.
+
+Usage:
+
+```java
+ObjectMapper mapper = new ObjectMapper();
+FileStore<TestData> store = new FileStore<>(mapper, Path.of("data/store.json"), TestData.class);
+
+// generic types are supported via a TypeReference
+FileStore<Profile<TestData>> genericStore =
+        new FileStore<>(mapper, Path.of("data/profiles.json"), new TypeReference<>() {});
+
+store.create(new TestData("Id001", "Rick", 47));
+store.create(new TestData("Id002", "Morty", 14), List.of("animated"));
+store.update(new TestData("Id001", "Rick Sanchez", 48));
+Optional<TestData> result = store.get("Id001");
+List<TestData> byRef = store.getByRefId("animated");
+Map<String, TestData> bulk = store.get(List.of("Id001", "Id002"));
+List<TestData> all = store.list();
+store.delete("Id001");
+```
+
 ## How to use it
 
 ### Maven Dependency
@@ -148,13 +216,28 @@ The following can be added in your dependencies, for the aerospike crud-store.
 </dependency>
 ```
 
+Or, for the file backed crud-store.
+
+```xml
+
+<dependency>
+    <groupId>com.livetheoogway.crudstore</groupId>
+    <artifactId>file-crud-store</artifactId>
+    <version>${crudstore.version}</version> <!--look for the latest version on top-->
+</dependency>
+```
+
+> [!NOTE]
+> `file-crud-store` marks `jackson-databind` as `provided`, so make sure a Jackson version is available on your
+> classpath (most applications already bring one in).
+
 ## Tech Dependencies
 
 - Java 17
-- Aerospike (any provided version should do)
+- Aerospike (optional, any provided version should do)
+- Jackson (for the file-crud-store, `provided` scope)
 
 ## Contributions
 
-Please raise Issues, Bugs or any feature requests at [Github Issues](https://github.com/livetheoogway/crud-store/issues)
-. <br>
+Please raise Issues, Bugs or any feature requests at [Github Issues](https://github.com/livetheoogway/crud-store/issues). <br>
 If you plan on contributing to the code, fork the repository and raise a Pull Request back here.

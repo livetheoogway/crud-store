@@ -12,12 +12,11 @@
  * under the License.
  */
 
-package com.livetheoogway.crudstore.aerospike;
+package com.livetheoogway.crudstore.file.data;
 
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
+import com.livetheoogway.crudstore.core.Id;
+import lombok.Builder;
 
-public record NamespaceSet(
-        @NotNull @NotEmpty String namespace,
-        @NotNull @NotEmpty String set) {
+@Builder
+public record UserData(String id, String name, int age) implements Id {
 }

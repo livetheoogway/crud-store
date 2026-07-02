@@ -7,7 +7,7 @@
     <groupId>com.livetheoogway.crudstore</groupId>
     <artifactId>crud-store</artifactId>
     <packaging>pom</packaging>
-    <version>1.2.11</version>
+    <version>1.3.0</version>
 
     <url>https://github.com/livetheoogway/crudstore</url>
     <description>A collection of CRUD stores implementing a clean interface.</description>
@@ -16,6 +16,7 @@
     <modules>
         <module>crud-store-core</module>
         <module>aerospike-crud-store</module>
+        <module>file-crud-store</module>
     </modules>
 
     <licenses>
@@ -45,19 +46,19 @@
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
-        <junit.jupiter.version>5.8.2</junit.jupiter.version>
-        <lombok.version>1.18.30</lombok.version>
-        <slf4j.api>1.7.36</slf4j.api>
+        <junit.jupiter.version>5.14.4</junit.jupiter.version>
+        <lombok.version>1.18.46</lombok.version>
+        <slf4j.api>2.0.18</slf4j.api>
         <sonar.version>3.9.0.2155</sonar.version>
 
         <maven.deploy.skip>false</maven.deploy.skip>
         <maven-javadoc-plugin.version>3.8.0</maven-javadoc-plugin.version>
         <maven.plugin.compiler.version>3.8.1</maven.plugin.compiler.version>
-        <maven-jacoco-plugin.version>0.8.7</maven-jacoco-plugin.version>
+        <maven-jacoco-plugin.version>0.8.15</maven-jacoco-plugin.version>
         <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
         <maven-jar-plugin.version>3.2.2</maven-jar-plugin.version>
         <maven-lombok-plugin.version>1.18.20.0</maven-lombok-plugin.version>
-        <maven-surefire-plugin.version>3.3.1</maven-surefire-plugin.version>
+        <maven-surefire-plugin.version>3.5.6</maven-surefire-plugin.version>
         <skip.lombok>true</skip.lombok>
         <maven-deploy-plugin.version>3.1.4</maven-deploy-plugin.version>
     </properties>
@@ -102,6 +103,14 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven-surefire-plugin.version}</version>
+                <configuration>
+                    <environmentVariables>
+                        <!-- Ryuk (the Testcontainers reaper) cannot bind-mount the Podman socket on macOS,
+                             so disable it. Testcontainers only reads this from the environment, never from
+                             ~/.testcontainers.properties. Harmless on Docker. -->
+                        <TESTCONTAINERS_RYUK_DISABLED>true</TESTCONTAINERS_RYUK_DISABLED>
+                    </environmentVariables>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -191,25 +200,6 @@
                 </configuration>
             </plugin>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>${maven-javadoc-plugin.version}</version>
-                <executions>
-                    <execution>
-                        <id>attach-javadocs</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <source>17</source>
-                    <sourcepath>target/generated-sources/delombok/</sourcepath>
-                    <doclint>none</doclint>
-                </configuration>
-            </plugin>
-            <plugin>
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok-maven-plugin</artifactId>
                 <version>${maven-lombok-plugin.version}</version>
@@ -225,7 +215,7 @@
                     <outputDirectory>${delombok.output}</outputDirectory>
                     <addOutputDirectory>false</addOutputDirectory>
                     <encoding>UTF-8</encoding>
-                    <skip>${skip.lombok}</skip> <!-- Add this line -->
+                    <skip>${skip.lombok}</skip>
                 </configuration>
                 <executions>
                     <execution>
@@ -283,27 +273,16 @@
                     <value>true</value>
                 </property>
             </activation>
-            <distributionManagement>
-                <snapshotRepository>
-                    <id>ossrh</id>
-                    <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
-                </snapshotRepository>
-                <repository>
-                    <id>ossrh</id>
-                    <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-                </repository>
-            </distributionManagement>
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>org.sonatype.plugins</groupId>
-                        <artifactId>nexus-staging-maven-plugin</artifactId>
-                        <version>1.6.13</version>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.5.0</version>
                         <extensions>true</extensions>
                         <configuration>
-                            <serverId>ossrh</serverId>
-                            <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
-                            <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                            <publishingServerId>ossrh</publishingServerId>
+                            <autoPublish>true</autoPublish>
                         </configuration>
                     </plugin>
                     <plugin>
@@ -320,12 +299,10 @@
                             </execution>
                         </executions>
                         <configuration>
-                            <executable>gpg</executable>
                             <gpgArguments>
                                 <arg>--pinentry-mode</arg>
                                 <arg>loopback</arg>
                             </gpgArguments>
-                            <passphrase>${env.MAVEN_GPG_PASSPHRASE}</passphrase>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -334,10 +311,13 @@
     </profiles>
 
     <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
         <repository>
-            <id>github</id>
-            <name>LiveTheOogway Apache Maven Packages</name>
-            <url>https://maven.pkg.github.com/</url>
+            <id>ossrh</id>
+            <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>
     </distributionManagement>
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022. Live the Oogway, Tushar Naik
+ * Copyright 2026. Live the Oogway, Tushar Naik
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in
  * compliance with the License. You may obtain a copy of the License at
@@ -19,6 +19,8 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
+import com.aerospike.client.policy.GenerationPolicy;
 import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.Filter;
@@ -29,12 +31,15 @@ import com.aerospike.client.query.Statement;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.livetheoogway.crudstore.core.ConcurrentStore;
+import com.livetheoogway.crudstore.core.ConcurrentUpdateException;
 import com.livetheoogway.crudstore.core.Id;
 import com.livetheoogway.crudstore.core.ReferenceExtendedStore;
+import com.livetheoogway.crudstore.core.Versioned;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
 
-import javax.validation.constraints.NotEmpty;
-import javax.validation.constraints.NotNull;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,15 +52,13 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @Slf4j
-public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedStore<T> {
-
-    private static final String DEFAULT_DATA_BIN = "data";
-    private static final String DEFAULT_REF_ID_BIN = "refId";
-    private static final String DEFAULT_REF_ID_INDEX_SUFFIX = "_idx";
+public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedStore<T>, ConcurrentStore<T, Long> {
 
     public static final AerospikeStoreSetting INDEX_DISABLED_STORE_SETTING = AerospikeStoreSetting.builder()
             .refIdSetting(RefIdSetting.builder().disabled(true).build()).build();
-
+    private static final String DEFAULT_DATA_BIN = "data";
+    private static final String DEFAULT_REF_ID_BIN = "refId";
+    private static final String DEFAULT_REF_ID_INDEX_SUFFIX = "_idx";
     protected final ObjectMapper mapper;
     protected final IAerospikeClient client;
     protected final NamespaceSet namespaceSet;
@@ -109,8 +112,8 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
         this.createPolicy = new WritePolicy(client.getWritePolicyDefault());
         this.storeSetting = defaultIfNull(storeSetting, namespaceSet.set());
         createPolicy.recordExistsAction = this.storeSetting.failOnCreateIfRecordExists()
-                                          ? RecordExistsAction.CREATE_ONLY
-                                          : RecordExistsAction.REPLACE;
+                ? RecordExistsAction.CREATE_ONLY
+                : RecordExistsAction.REPLACE;
         this.updateOnly = new WritePolicy(client.getWritePolicyDefault());
         updateOnly.recordExistsAction = RecordExistsAction.UPDATE_ONLY;
         setupIndexes();
@@ -162,6 +165,74 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
     @Override
     public void update(final T item) {
         write(item.id(), () -> recordDetails(item, null), updateOnly, errorHandler);
+    }
+
+    /**
+     * read the item along with its version. The version maps to the Aerospike record generation.
+     *
+     * @param id key
+     * @return the item and its version, if present
+     */
+    @Override
+    public Optional<Versioned<T, Long>> getWithVersion(final String id) {
+        log.info("[{}] getWithVersion item for id:{}", typeReference.getType().getTypeName(), id);
+        try {
+            final var requestIdKey = new Key(namespaceSet.namespace(), namespaceSet.set(), id);
+            final var asRecord = client.get(client.getReadPolicyDefault(), requestIdKey);
+            if (asRecord == null) {
+                return errorHandler.onNoRecordFound(id).map(value -> new Versioned<>(value, 0L));
+            }
+            final long generation = asRecord.generation;
+            return extractItemFromRecord(id, asRecord).map(value -> new Versioned<>(value, generation));
+        } catch (AerospikeException e) {
+            log.error("[{}] Aerospike Error getWithVersion item for id:{}", typeReference.getType().getTypeName(), id, e);
+            return errorHandler.onAerospikeError(id, e).map(value -> new Versioned<>(value, 0L));
+        }
+    }
+
+    /**
+     * atomically update the item only if its current generation matches {@code expectedVersion}.
+     * This uses Aerospike's native generation based optimistic locking
+     * ({@link GenerationPolicy#EXPECT_GEN_EQUAL}), so the check-and-set is performed server side.
+     * <p>
+     * Throws {@link ConcurrentUpdateException} when the item is absent or when its generation no longer
+     * matches, i.e. it was concurrently modified since {@code expectedVersion} was read. Genuine
+     * Aerospike/serialization errors are routed through the {@link ErrorHandler}.
+     *
+     * @param item            new value to store
+     * @param expectedVersion the generation the caller expects the stored record to currently have
+     * @throws ConcurrentUpdateException if the record is absent or was concurrently modified
+     * @throws NullPointerException       if expectedVersion is null
+     */
+    @Override
+    public void checkAndUpdate(final T item, final Long expectedVersion) {
+        log.info("[{}] checkAndUpdate item for id:{} expectedVersion:{}",
+                typeReference.getType().getTypeName(), item.id(), expectedVersion);
+        try {
+            final var recordDetails = recordDetails(item, null);
+            final var writePolicy = new WritePolicy(updateOnly);
+            writePolicy.generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL;
+            writePolicy.generation = expectedVersion.intValue();
+            if (recordDetails.expiration() > 0) {
+                writePolicy.expiration = recordDetails.expiration();
+            }
+            final var requestIdKey = new Key(namespaceSet.namespace(), namespaceSet.set(), item.id());
+            client.put(writePolicy, requestIdKey, recordDetails.bins());
+        } catch (AerospikeException e) {
+            if (e.getResultCode() == ResultCode.GENERATION_ERROR
+                    || e.getResultCode() == ResultCode.KEY_NOT_FOUND_ERROR) {
+                log.info("[{}] checkAndUpdate conflict for id:{} expectedVersion:{} resultCode:{}",
+                        typeReference.getType().getTypeName(), item.id(), expectedVersion, e.getResultCode());
+                throw new ConcurrentUpdateException(
+                        "checkAndUpdate failed, record was concurrently modified or absent for id:" + item.id(), e);
+            }
+            log.error("[{}] Aerospike Error checkAndUpdate item for id:{}",
+                    typeReference.getType().getTypeName(), item.id(), e);
+            errorHandler.onAerospikeError(item.id(), e);
+        } catch (JsonProcessingException e) {
+            log.error("Error while converting to string for id:{}", item.id(), e);
+            errorHandler.onSerializationError(item.id(), e);
+        }
     }
 
 
@@ -260,6 +331,7 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
 
     /**
      * given an Aerospike Record, extract the data out of it
+     *
      * @param id       key
      * @param asRecord how the record is extracted
      * @return optionally return data if available
@@ -344,9 +416,9 @@ public abstract class AerospikeStore<T extends Id> implements ReferenceExtendedS
         try {
             final var refIdIndexTask = client
                     .createIndex(null, namespaceSet.namespace(), namespaceSet.set(),
-                                 storeSetting.refIdSetting().refIdIndex(), storeSetting.refIdSetting().refIdBin(),
-                                 IndexType.STRING,
-                                 IndexCollectionType.LIST);
+                            storeSetting.refIdSetting().refIdIndex(), storeSetting.refIdSetting().refIdBin(),
+                            IndexType.STRING,
+                            IndexCollectionType.LIST);
             if (refIdIndexTask != null) {
                 refIdIndexTask.waitTillComplete();
                 log.info("Created index: {}", storeSetting.refIdSetting().refIdIndex());
