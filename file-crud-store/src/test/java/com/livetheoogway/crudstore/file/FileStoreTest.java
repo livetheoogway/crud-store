@@ -16,8 +16,10 @@ package com.livetheoogway.crudstore.file;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.livetheoogway.crudstore.core.ConcurrentUpdateException;
 import com.livetheoogway.crudstore.core.ReferenceExtendedStore;
 import com.livetheoogway.crudstore.core.Store;
+import com.livetheoogway.crudstore.core.Versioned;
 import com.livetheoogway.crudstore.file.data.ProfileData;
 import com.livetheoogway.crudstore.file.data.UserData;
 import org.junit.jupiter.api.BeforeEach;
@@ -204,5 +206,78 @@ class FileStoreTest {
         assertEquals("me", data.get().name());
         assertEquals(2, data.get().age());
         assertEquals(1, store.list().size());
+    }
+
+    @Test
+    void checkAndUpdateOperations() {
+        final FileStore<UserData> store = newStore();
+
+        /* absent id -> throws */
+        assertThrows(ConcurrentUpdateException.class,
+                     () -> store.checkAndUpdate(new UserData("1", "ghost", 1), 0L));
+        assertTrue(store.getWithVersion("1").isEmpty());
+
+        store.create(new UserData("1", "me", 2));
+        assertEquals(0, store.getWithVersion("1").orElseThrow().version());
+
+        /* stale version -> throws, value untouched */
+        assertThrows(ConcurrentUpdateException.class,
+                     () -> store.checkAndUpdate(new UserData("1", "stale", 9), 7L));
+        assertEquals("me", store.get("1").orElseThrow().name());
+
+        /* matching version -> applied and version advances */
+        store.checkAndUpdate(new UserData("1", "me too", 5), 0L);
+        final Versioned<UserData, Long> versioned = store.getWithVersion("1").orElseThrow();
+        assertEquals("me too", versioned.value().name());
+        assertEquals(1, versioned.version());
+
+        /* the version and the swap survive reopening the file */
+        final FileStore<UserData> reopened = newStore();
+        final Versioned<UserData, Long> reloaded = reopened.getWithVersion("1").orElseThrow();
+        assertEquals("me too", reloaded.value().name());
+        assertEquals(1, reloaded.version());
+
+        /* stale (old) version now fails against the reopened store, fresh one works */
+        assertThrows(ConcurrentUpdateException.class,
+                     () -> reopened.checkAndUpdate(new UserData("1", "old", 0), 0L));
+        reopened.checkAndUpdate(new UserData("1", "newest", 6), 1L);
+        assertEquals("newest", reopened.get("1").orElseThrow().name());
+    }
+
+    @Test
+    void concurrentCheckAndUpdateHasExactlyOneWinner() throws Exception {
+        final FileStore<UserData> store = newStore();
+        store.create(new UserData("1", "start", 0));
+        final long version = store.getWithVersion("1").orElseThrow().version();
+
+        final int threads = 8;
+        final ExecutorService executor = Executors.newFixedThreadPool(threads);
+        try {
+            final List<Future<Boolean>> futures = new java.util.ArrayList<>();
+            for (int t = 0; t < threads; t++) {
+                final int threadId = t;
+                /* every thread races to CAS off the same starting version; only one may win, the rest throw */
+                futures.add(executor.submit(() -> {
+                    try {
+                        store.checkAndUpdate(new UserData("1", "w" + threadId, threadId), version);
+                        return true;
+                    } catch (ConcurrentUpdateException e) {
+                        return false;
+                    }
+                }));
+            }
+            int winners = 0;
+            for (final Future<Boolean> future : futures) {
+                if (Boolean.TRUE.equals(future.get(30, TimeUnit.SECONDS))) {
+                    winners++;
+                }
+            }
+            assertEquals(1, winners);
+        } finally {
+            executor.shutdownNow();
+        }
+
+        /* exactly one bump happened */
+        assertEquals(version + 1, store.getWithVersion("1").orElseThrow().version().longValue());
     }
 }

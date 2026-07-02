@@ -56,6 +56,36 @@ An extension to this has been added (since 1.2.5) ReferenceExtendedStore, to sup
     List<T> getByRefId(final String refId);
 ```
 
+#### Optimistic concurrency (compare-and-set)
+
+Since 1.3.0, stores that can honour an atomic check-and-set implement `ConcurrentStore<T, V>` (a sub-interface of
+`Store`). This is kept separate from the base `Store` (interface segregation), so callers handed a plain `Store` never
+risk a runtime `UnsupportedOperationException`. Read an item together with an opaque version stamp, then update it only
+if it has not changed in the meantime:
+```java
+    Optional<Versioned<T, V>> getWithVersion(final String id);
+    void checkAndUpdate(final T item, final V expectedVersion);
+```
+The version type `V` is left to the store, so each backend can use its natural concurrency token: a numeric generation
+(`Long`) for Aerospike/HBase, or an opaque `String` ETag for object stores such as S3/CosmosDB. `checkAndUpdate` throws
+`ConcurrentUpdateException` if the item was absent or was concurrently modified (version mismatch). Throwing (rather
+than returning a boolean) is the idiomatic optimistic-locking contract used by JPA/Hibernate and composes cleanly with
+declarative retry frameworks (Resilience4j, Spring Retry). The Aerospike and File stores implement
+`ConcurrentStore<T, Long>`; the Aerospike store backs the version with the native record generation, so the
+check-and-set is enforced atomically server-side (`GenerationPolicy.EXPECT_GEN_EQUAL`).
+```java
+ConcurrentStore<TestData, Long> store = myAerospikeStore; // AerospikeStore implements ConcurrentStore<T, Long>
+Optional<Versioned<TestData, Long>> current = store.getWithVersion("Id001");
+if (current.isPresent()) {
+    TestData mutated = current.get().value().withName("Rick Sanchez"); // your own copy-with-change
+    try {
+        store.checkAndUpdate(mutated, current.get().version());
+    } catch (ConcurrentUpdateException e) {
+        // someone else changed it first; re-read via getWithVersion and retry
+    }
+}
+```
+
 #### Cached Store
 
 Wraps your store with a Caffine in-memory cache. Use this to quickly have a cache on top of your store<br>

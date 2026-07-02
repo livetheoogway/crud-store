@@ -69,8 +69,18 @@ class CachingStoreTest {
     }
 
     @Test
-    void testExpireAndRefreshAfterWrite() {
-        /* initialize */
+    void cachingStoreIsNotAConcurrentStore() {
+        /*
+         * CachingStore is a plain Store decorator and deliberately does NOT implement ConcurrentStore
+         * (interface segregation), so it exposes no compare-and-set. CAS lives on the concurrent stores
+         * (Aerospike, File). This test simply documents that the cache decorator stays a Store.
+         */
+        final Store<TestData> store = new CachingStore<>(new InMemoryStore<>(), 5, 60, 60);
+        assertFalse(store instanceof ConcurrentStore);
+    }
+
+    @Test
+    void testExpireAndRefreshAfterWrite() {        /* initialize */
         Store<TestData> store = new CachingStore<>(new InMemoryStore<>(), 5, 2, 1);
 
         /* after 1s, refresh after write should kick in */

@@ -16,8 +16,11 @@ package com.livetheoogway.crudstore.file;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.livetheoogway.crudstore.core.ConcurrentStore;
+import com.livetheoogway.crudstore.core.ConcurrentUpdateException;
 import com.livetheoogway.crudstore.core.Id;
 import com.livetheoogway.crudstore.core.ReferenceExtendedStore;
+import com.livetheoogway.crudstore.core.Versioned;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -34,7 +37,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -51,6 +53,10 @@ import java.util.stream.Collectors;
  * The store is thread-safe. A {@link ReadWriteLock} guards access, so reads can proceed concurrently while mutations
  * are exclusive. Writes are atomic on disk: data is written to a temporary file and then moved into place.
  * <p>
+ * Optimistic concurrency is supported through {@link #getWithVersion(String)} and {@link #checkAndUpdate(Id, long)}.
+ * Each item carries a monotonically increasing version that is bumped on every successful update and persisted
+ * alongside the data.
+ * <p>
  * <b>Single process only:</b> the lock guards a single instance within a single JVM. This store does not provide any
  * cross-process or cross-instance coordination, so pointing multiple {@code FileStore} instances (or multiple
  * processes) at the same backing file concurrently can lead to lost updates. Use a single instance per file.
@@ -59,7 +65,7 @@ import java.util.stream.Collectors;
  * @since 1.3.0
  */
 @Slf4j
-public class FileStore<T extends Id> implements ReferenceExtendedStore<T> {
+public class FileStore<T extends Id> implements ReferenceExtendedStore<T>, ConcurrentStore<T, Long> {
 
     private final ObjectMapper mapper;
     private final Path dataFile;
@@ -75,6 +81,11 @@ public class FileStore<T extends Id> implements ReferenceExtendedStore<T> {
      * live in-memory view of the reference index; replaced wholesale once a write succeeds
      */
     private Map<String, List<String>> index;
+
+    /**
+     * live in-memory view of per-id version stamps; replaced wholesale once a write succeeds
+     */
+    private Map<String, Long> versions;
 
     /**
      * @param mapper   jackson object mapper used for (de)serialization
@@ -104,21 +115,23 @@ public class FileStore<T extends Id> implements ReferenceExtendedStore<T> {
 
     @Override
     public void create(final T item) {
-        mutate((data, index) -> {
+        mutate((data, index, versions) -> {
             if (data.containsKey(item.id())) {
                 throw new IllegalArgumentException("item already created for id:" + item.id());
             }
             data.put(item.id(), item);
+            versions.put(item.id(), 0L);
         });
     }
 
     @Override
     public void create(final T item, final List<String> refIds) {
-        mutate((data, index) -> {
+        mutate((data, index, versions) -> {
             if (data.containsKey(item.id())) {
                 throw new IllegalArgumentException("item already created for id:" + item.id());
             }
             data.put(item.id(), item);
+            versions.put(item.id(), 0L);
             if (refIds != null) {
                 refIds.forEach(refId -> index.computeIfAbsent(refId, k -> new ArrayList<>()).add(item.id()));
             }
@@ -127,21 +140,40 @@ public class FileStore<T extends Id> implements ReferenceExtendedStore<T> {
 
     @Override
     public void update(final T item) {
-        mutate((data, index) -> {
+        mutate((data, index, versions) -> {
             if (!data.containsKey(item.id())) {
                 throw new IllegalArgumentException("update cannot be done on unknown item id:" + item.id());
             }
             data.put(item.id(), item);
+            versions.merge(item.id(), 1L, Long::sum);
+        });
+    }
+
+    @Override
+    public void checkAndUpdate(final T item, final Long expectedVersion) {
+        mutate((data, index, versions) -> {
+            if (!data.containsKey(item.id())) {
+                throw new ConcurrentUpdateException("checkAndUpdate failed, unknown item id:" + item.id());
+            }
+            final long current = versions.getOrDefault(item.id(), 0L);
+            if (current != expectedVersion) {
+                throw new ConcurrentUpdateException(
+                        "checkAndUpdate failed, version mismatch for id:" + item.id()
+                                + " expected:" + expectedVersion + " actual:" + current);
+            }
+            data.put(item.id(), item);
+            versions.merge(item.id(), 1L, Long::sum);
         });
     }
 
     @Override
     public void delete(final String id) {
-        mutate((data, index) -> {
+        mutate((data, index, versions) -> {
             if (!data.containsKey(id)) {
                 throw new IllegalArgumentException("id doesn't exist, cannot be deleted id:" + id);
             }
             data.remove(id);
+            versions.remove(id);
             index.values().forEach(ids -> ids.remove(id));
         });
     }
@@ -149,6 +181,17 @@ public class FileStore<T extends Id> implements ReferenceExtendedStore<T> {
     @Override
     public Optional<T> get(final String id) {
         return read(() -> Optional.ofNullable(data.get(id)));
+    }
+
+    @Override
+    public Optional<Versioned<T, Long>> getWithVersion(final String id) {
+        return read(() -> {
+            final T value = data.get(id);
+            if (value == null) {
+                return Optional.empty();
+            }
+            return Optional.of(new Versioned<>(value, versions.getOrDefault(id, 0L)));
+        });
     }
 
     @Override
@@ -186,17 +229,21 @@ public class FileStore<T extends Id> implements ReferenceExtendedStore<T> {
     /**
      * Applies a mutation atomically. The mutation is performed against fresh copies of the current state (so a
      * validation failure leaves the live view untouched), the copies are persisted to disk, and only once the write
-     * succeeds are they swapped in as the live view. This guarantees the in-memory view never diverges from disk.
+     * succeeds are they swapped in as the live view. This guarantees the in-memory view never diverges from disk. If
+     * the mutation throws (for example a compare-and-set whose precondition did not hold), nothing is persisted and the
+     * live view is left untouched.
      */
-    private void mutate(final BiConsumer<Map<String, T>, Map<String, List<String>>> mutation) {
+    private void mutate(final Mutation<T> mutation) {
         lock.writeLock().lock();
         try {
             final Map<String, T> newData = new LinkedHashMap<>(data);
             final Map<String, List<String>> newIndex = deepCopyIndex(index);
-            mutation.accept(newData, newIndex);
-            persist(newData, newIndex);
+            final Map<String, Long> newVersions = new LinkedHashMap<>(versions);
+            mutation.apply(newData, newIndex, newVersions);
+            persist(newData, newIndex, newVersions);
             this.data = newData;
             this.index = newIndex;
+            this.versions = newVersions;
         } finally {
             lock.writeLock().unlock();
         }
@@ -211,10 +258,12 @@ public class FileStore<T extends Id> implements ReferenceExtendedStore<T> {
                 final Persisted<T> loaded = loadFromDisk();
                 this.data = loaded.data();
                 this.index = loaded.index();
+                this.versions = loaded.versions();
             } else {
                 this.data = new LinkedHashMap<>();
                 this.index = new LinkedHashMap<>();
-                persist(this.data, this.index);
+                this.versions = new LinkedHashMap<>();
+                persist(this.data, this.index, this.versions);
             }
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to initialize backing file:" + dataFile, e);
@@ -225,7 +274,7 @@ public class FileStore<T extends Id> implements ReferenceExtendedStore<T> {
         try {
             final String content = Files.readString(dataFile);
             if (content.isBlank()) {
-                return new Persisted<>(new LinkedHashMap<>(), new LinkedHashMap<>());
+                return new Persisted<>(new LinkedHashMap<>(), new LinkedHashMap<>(), new LinkedHashMap<>());
             }
             final FileEnvelope envelope = mapper.readValue(content, FileEnvelope.class);
             final Map<String, T> loadedData = new LinkedHashMap<>();
@@ -237,15 +286,21 @@ public class FileStore<T extends Id> implements ReferenceExtendedStore<T> {
             final Map<String, List<String>> loadedIndex = envelope.index() == null
                                                            ? new LinkedHashMap<>()
                                                            : deepCopyIndex(envelope.index());
-            return new Persisted<>(loadedData, loadedIndex);
+            final Map<String, Long> loadedVersions = envelope.versions() == null
+                                                      ? new LinkedHashMap<>()
+                                                      : new LinkedHashMap<>(envelope.versions());
+            return new Persisted<>(loadedData, loadedIndex, loadedVersions);
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to read backing file:" + dataFile, e);
         }
     }
 
-    private void persist(final Map<String, T> data, final Map<String, List<String>> index) {
+    private void persist(final Map<String, T> data,
+                         final Map<String, List<String>> index,
+                         final Map<String, Long> versions) {
         try {
-            final FileEnvelope envelope = new FileEnvelope(new LinkedHashMap<>(data), new LinkedHashMap<>(index));
+            final FileEnvelope envelope = new FileEnvelope(
+                    new LinkedHashMap<>(data), new LinkedHashMap<>(index), new LinkedHashMap<>(versions));
             final String content = mapper.writeValueAsString(envelope);
             final Path tmp = Files.createTempFile(
                     dataFile.toAbsolutePath().getParent(), dataFile.getFileName().toString(), ".tmp");
@@ -268,7 +323,21 @@ public class FileStore<T extends Id> implements ReferenceExtendedStore<T> {
         }
         return copy;
     }
-    private record Persisted<T extends Id>(Map<String, T> data, Map<String, List<String>> index) {}
 
-    private record FileEnvelope(Map<String, Object> data, Map<String, List<String>> index) {}
+    @FunctionalInterface
+    private interface Mutation<T extends Id> {
+        /**
+         * Applies the mutation to the given working copies. Throw to abort the mutation (nothing is persisted and the
+         * live view is left untouched).
+         */
+        void apply(Map<String, T> data, Map<String, List<String>> index, Map<String, Long> versions);
+    }
+
+    private record Persisted<T extends Id>(Map<String, T> data,
+                                           Map<String, List<String>> index,
+                                           Map<String, Long> versions) {}
+
+    private record FileEnvelope(Map<String, Object> data,
+                                Map<String, List<String>> index,
+                                Map<String, Long> versions) {}
 }
