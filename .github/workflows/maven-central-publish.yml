@@ -1,8 +1,6 @@
 name: Manual Deployment to Maven Central
 
-on:
-  release:
-    types: [created]
+on: workflow_dispatch
 
 jobs:
   build:
@@ -19,6 +17,8 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
           cache: maven
+          gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+          gpg-passphrase: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
 
       - name: "🔧 Compile"
         run: mvn compile
@@ -26,26 +26,11 @@ jobs:
   publish:
     needs: build
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
     steps:
       - name: "👷 Checkout code"
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: "🔑 Import GPG Key"
-        run: |
-          echo "${{ secrets.MAVEN_GPG_PRIVATE_KEY }}" | base64 -d | gpg --batch --import
-
-      - name: "🛠 Configure GPG to Allow Loopback"
-        run: |
-          mkdir -p ~/.gnupg
-          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
-          echo "use-agent" >> ~/.gnupg/gpg.conf
-          gpgconf --reload gpg-agent
 
       - name: "☕ Set up java"
         uses: actions/setup-java@v4
@@ -56,26 +41,20 @@ jobs:
           server-id: ossrh
           server-username: MAVEN_USERNAME
           server-password: MAVEN_PASSWORD
+          gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+          gpg-key-id: 5F74D2AB5E934F6C81C815C1E52415495EC603B0
 
       - name: "🗽 Publish package"
-        run: mvn clean deploy -DskipTests -Prelease -Dgpg.passphrase=${{ secrets.MAVEN_GPG_PASSPHRASE }}
+        run: mvn clean deploy -DskipTests -Prelease
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
 
-      - name: "🗽Deploy to github packages"
-        run: mvn -X -B deploy -DskipTests -s ${{ github.workspace }}/.github/workflows/settings.xml || true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_ACTOR: ${{ github.actor }}
-
-  changelog_capture:
+  tag_release:
     needs: publish
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: read
     steps:
       - name: "👷 Checkout code"
         uses: actions/checkout@v4
@@ -83,12 +62,33 @@ jobs:
           fetch-depth: 0
 
       - name: "📎 Install xmllint"
-        run: sudo apt-get update && sudo apt-get install -y libxml2-utils
+        run: sudo apt-get install -y libxml2-utils
 
       - name: "📑 Setup release information"
         run: |
           pom_version=`xmllint --xpath '/*[local-name()="project"]/*[local-name()="version"]/text()' pom.xml`
           echo "POM_VERSION=$pom_version" >> $GITHUB_ENV
+
+      - name: "✏️ Generate release changelog"
+        id: extract-release-changelog
+        uses: heinrichreimer/github-changelog-generator-action@v2.3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          unreleasedOnly: "true"
+          stripHeaders: "true"
+          stripGeneratorNotice: "true"
+          futureRelease: ${{ env.POM_VERSION }}
+
+      - name: "📍 Create release"
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.POM_VERSION }}
+          release_name: v${{ env.POM_VERSION }}
+          draft: false
+          prerelease: false
+          body: ${{ steps.extract-release-changelog.outputs.changelog }}
 
       - name: "✏️ Generate full changelog"
         id: extract-changelog
@@ -102,6 +102,7 @@ jobs:
           CI_USER: github-actions
           CI_EMAIL: github-actions@github.com
         run: |
+          git config --local user.email "$CI_EMAIL"
           git config --local user.name "$CI_USER"
           git status
           git add CHANGELOG.md && git commit -m 'Updated CHANGELOG.md' && echo "push=true" >> $GITHUB_ENV || echo "No changes to CHANGELOG.md"

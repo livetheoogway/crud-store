@@ -11,6 +11,9 @@
 
     <artifactId>file-crud-store</artifactId>
 
+    <name>File CRUD Store</name>
+    <description>A CRUD store implementation that persists data to the file system.</description>
+
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>

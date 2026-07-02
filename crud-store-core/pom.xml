@@ -11,6 +11,9 @@
 
     <artifactId>crud-store-core</artifactId>
 
+    <name>CRUD Store Core</name>
+    <description>Core interfaces and implementations for CRUD stores.</description>
+
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>

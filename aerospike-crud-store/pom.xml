@@ -11,6 +11,9 @@
 
     <artifactId>aerospike-crud-store</artifactId>
 
+    <name>Aerospike CRUD Store</name>
+    <description>A CRUD store implementation that uses Aerospike as the backend.</description>
+
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
