@@ -11,9 +11,6 @@
     <a href="https://github.com/livetheoogway/crud-store/blob/master/LICENSE">
     	<img src="https://img.shields.io/github/license/livetheoogway/crud-store" alt="license" />
     </a>
-    <a href="https://javadoc.io/doc/com.livetheoogway.crudstore/crud-store">
-    	<img src="https://javadoc.io/badge2/com.livetheoogway.crudstore/crud-store/javadoc.svg" alt="javadoc" />
-    </a>
   </p>
 
   <p align="center">
