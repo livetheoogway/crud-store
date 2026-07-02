@@ -1,5 +1,22 @@
 # Changelog
 
+## [v1.3.1](https://github.com/livetheoogway/crud-store/tree/v1.3.1)
+
+**Implemented enhancements:**
+
+- Added optimistic concurrency (compare-and-set) support via a new `ConcurrentStore<T, V>` sub-interface of `Store`,
+  with `getWithVersion` and `checkAndUpdate`, plus a `Versioned<T, V>` wrapper. Kept as a separate interface (interface
+  segregation) so plain `Store` callers never hit a runtime `UnsupportedOperationException`.
+- The version type `V` is left to the store, so each backend can use its natural concurrency token (a numeric `Long`
+  generation for Aerospike/HBase, or an opaque `String` ETag for object stores such as S3/CosmosDB).
+- `checkAndUpdate` throws a dedicated `ConcurrentUpdateException` on a version conflict (fail-fast, retry-friendly),
+  matching the idiomatic JPA/Hibernate optimistic-locking contract.
+- Aerospike store implements `ConcurrentStore<T, Long>` using the native record generation
+  (`GenerationPolicy.EXPECT_GEN_EQUAL`), so the check-and-set is enforced atomically server-side.
+- The File store also implements `ConcurrentStore<T, Long>` and persists per-item versions in its backing file.
+  `InMemoryStore` remains a simple `ReferenceExtendedStore` (no CAS), and `CachingStore` remains a plain `Store`
+  decorator that intentionally does not expose CAS.
+
 ## [v1.2.11](https://github.com/livetheoogway/crud-store/tree/v1.2.11) (2025-04-07)
 
 [Full Changelog](https://github.com/livetheoogway/crud-store/compare/v1.2.10...v1.2.11)
